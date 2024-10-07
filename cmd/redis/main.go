@@ -35,7 +35,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/go-shellwords"
 	"github.com/peterh/liner"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/alecthomas/kingpin/v2"
 )
 
 var (
