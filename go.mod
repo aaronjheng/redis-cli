@@ -1,4 +1,4 @@
-module github.com/IBM-Cloud/redli
+module github.com/aaronjheng/redis-cli
 
 go 1.22.0
 
