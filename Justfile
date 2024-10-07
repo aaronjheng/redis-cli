@@ -7,5 +7,5 @@ lint:
 	golangci-lint run --verbose --allow-parallel-runners
 
 update-commands:
-	curl -LO https://github.com/antirez/redis-doc/raw/master/commands.json
+	curl -o cmd/redis/commands.json -LO https://github.com/antirez/redis-doc/raw/master/commands.json
 
