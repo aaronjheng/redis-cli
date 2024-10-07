@@ -1,5 +1,8 @@
 set dotenv-load
 
+tidy:
+	go mod tidy
+
 lint:
 	golangci-lint run --verbose --allow-parallel-runners
 
