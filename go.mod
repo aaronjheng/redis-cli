@@ -2,12 +2,15 @@ module github.com/aaronjheng/redis-cli
 
 go 1.22.0
 
+replace github.com/gomodule/redigo => ./third_party/redigo
+
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/gomodule/redigo v1.9.2
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/peterh/liner v1.2.2
+	golang.org/x/crypto v0.28.0
 )
 
 require (
@@ -17,5 +20,3 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 )
-
-replace github.com/gomodule/redigo => ../redigo

@@ -32,6 +32,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aaronjheng/redis-cli/internal/ssh"
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/gomodule/redigo/redis"
 	"github.com/mattn/go-isatty"
@@ -55,6 +56,9 @@ var (
 	forceraw      = kingpin.Flag("raw", "Produce raw output").Bool()
 	eval          = kingpin.Flag("eval", "Evaluate a Lua script file, follow with keys a , and args").File()
 	commandargs   = kingpin.Arg("commands", "Redis commands and values").Strings()
+
+	sshUri          = kingpin.Flag("ssh", "SSH tunnel connection URI. Format: [user[:pass]@]host[:port]").Default("").String()
+	sshIdentityFile = kingpin.Flag("ssh-identity-file", "SSH identity file").Default("").String()
 )
 
 var (
@@ -112,6 +116,8 @@ func main() {
 		connectionurl = (*redisurl).String()
 	}
 
+	dialOptions := []redis.DialOption{}
+
 	config := &tls.Config{InsecureSkipVerify: *skipverify}
 	// If we have a certificate, then assume TLS
 	if len(cert) > 0 {
@@ -127,7 +133,35 @@ func main() {
 		config.ServerName = *servername
 	}
 
-	conn, err := redis.DialURL(connectionurl, redis.DialTLSConfig(config))
+	dialOptions = append(dialOptions, redis.DialTLSConfig(config))
+
+	// SSH Tunnel
+	if *sshUri != "" {
+		u, err := url.Parse("ssh://" + *sshUri)
+		if err != nil {
+		}
+
+		password, _ := u.User.Password()
+
+		cfg := &ssh.Config{
+			Host:         u.Hostname(),
+			Port:         u.Port(),
+			Username:     u.User.Username(),
+			Password:     password,
+			IdentityFile: *sshIdentityFile,
+		}
+		dialFunc, err := ssh.NewDialerFunc(cfg)
+		if err != nil {
+		}
+
+		dialOptions = append(dialOptions,
+			redis.DialContextFunc(dialFunc),
+			redis.DialReadTimeout(0),
+			redis.DialWriteTimeout(0),
+		)
+	}
+
+	conn, err := redis.DialURL(connectionurl, dialOptions...)
 
 	if err != nil && err.Error() == "ERR wrong number of arguments for 'auth' command" {
 		// Fallback to support usernames with Redis versions without ACL support
@@ -135,7 +169,7 @@ func main() {
 		// this regex should work...
 		re := regexp.MustCompile(`^(rediss?://)(.*)(:.*@.*)`)
 		connectionurl = re.ReplaceAllString(connectionurl, `$1$3`)
-		conn, err = redis.DialURL(connectionurl, redis.DialTLSConfig(config))
+		conn, err = redis.DialURL(connectionurl, dialOptions...)
 	}
 
 	if err != nil {
@@ -396,20 +430,6 @@ func toRedisValueString(value interface{}, forceraw bool) string {
 	return ""
 }
 
-func redisParseInfo(reply string) map[string]string {
-	lines := strings.Split(reply, "\r\n")
-	values := map[string]string{}
-	for _, line := range lines {
-		if len(line) > 0 && line[0] != '#' {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				values[parts[0]] = parts[1]
-			}
-		}
-	}
-	return values
-}
-
 func getPrompt() string {
 	if *longprompt {
 		if *redisurl != nil {
@@ -419,11 +439,6 @@ func getPrompt() string {
 	}
 
 	return "> "
-}
-
-func printAsJSON(toprint interface{}) {
-	jsonstr, _ := json.MarshalIndent(toprint, "", " ")
-	fmt.Println(string(jsonstr))
 }
 
 // Commands is a holder for Redis Command structures
