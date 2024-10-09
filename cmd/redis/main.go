@@ -19,10 +19,11 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -31,15 +32,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/gomodule/redigo/redis"
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/go-shellwords"
 	"github.com/peterh/liner"
-	"github.com/alecthomas/kingpin/v2"
 )
 
 var (
-	debug         = kingpin.Flag("debug", "Enable debug mode.").Bool()
 	longprompt    = kingpin.Flag("long", "Enable long prompt with host/port").Bool()
 	redisurl      = kingpin.Flag("uri", "URI to connect to").Short('u').URL()
 	redishost     = kingpin.Flag("host", "Host to connect to").Short('h').Default("127.0.0.1").String()
@@ -59,9 +59,11 @@ var (
 
 var (
 	rawrediscommands = Commands{}
-	conn             redis.Conn
 	raw              = false
 )
+
+//go:embed commands.json
+var redisCommandsJSON []byte
 
 func main() {
 	kingpin.Version(version)
@@ -78,7 +80,7 @@ func main() {
 	cert := []byte{}
 
 	if *rediscertfile != nil {
-		mycert, err := ioutil.ReadAll(*rediscertfile)
+		mycert, err := io.ReadAll(*rediscertfile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -145,8 +147,7 @@ func main() {
 	if *eval != nil {
 		command := *commandargs
 
-		scriptsrc, err := ioutil.ReadAll(*eval)
-
+		scriptsrc, err := io.ReadAll(*eval)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -157,7 +158,7 @@ func main() {
 
 		// If there are other arguments, process them
 		if len(command) > 0 {
-			var args = make([]interface{}, len(command[:]))
+			args := make([]interface{}, len(command[:]))
 
 			gotcomma := false
 
@@ -179,7 +180,6 @@ func main() {
 
 		script := redis.NewScript(keycnt, string(scriptsrc[:]))
 		result, err := script.Do(conn, iargs...)
-
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -194,12 +194,11 @@ func main() {
 
 		catchMonitorCmd(conn, command[0])
 
-		var args = make([]interface{}, len(command[1:]))
+		args := make([]interface{}, len(command[1:]))
 		for i, d := range command[1:] {
 			args[i] = d
 		}
 		result, err := conn.Do(command[0], args...)
-
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -310,7 +309,7 @@ func main() {
 			forceraw = true
 		}
 
-		var args = make([]interface{}, len(parts[1:]))
+		args := make([]interface{}, len(parts[1:]))
 		for i, d := range parts[1:] {
 			args[i] = d
 		}
@@ -427,10 +426,10 @@ func printAsJSON(toprint interface{}) {
 	fmt.Println(string(jsonstr))
 }
 
-//Commands is a holder for Redis Command structures
+// Commands is a holder for Redis Command structures
 type Commands map[string]Command
 
-//Command is a holder for Redis Command data includint arguments
+// Command is a holder for Redis Command data includint arguments
 type Command struct {
 	Summary    string     `json:"summary"`
 	Complexity string     `json:"complexity"`
@@ -439,7 +438,7 @@ type Command struct {
 	Group      string     `json:"group"`
 }
 
-//Argument is a holder for Redis Command Argument data
+// Argument is a holder for Redis Command Argument data
 type Argument struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
