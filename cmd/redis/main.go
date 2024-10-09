@@ -41,7 +41,6 @@ import (
 )
 
 var (
-	longprompt    = kingpin.Flag("long", "Enable long prompt with host/port").Bool()
 	redisurl      = kingpin.Flag("uri", "URI to connect to").Short('u').URL()
 	redishost     = kingpin.Flag("host", "Host to connect to").Short('h').Default("127.0.0.1").String()
 	redisport     = kingpin.Flag("port", "Port to connect to").Short('p').Default("6379").Int()
@@ -431,14 +430,11 @@ func toRedisValueString(value interface{}, forceraw bool) string {
 }
 
 func getPrompt() string {
-	if *longprompt {
-		if *redisurl != nil {
-			return fmt.Sprintf("%s:%s> ", (*redisurl).Hostname(), (*redisurl).Port())
-		}
-		return fmt.Sprintf("%s:%d> ", *redishost, *redisport)
+	if *redisurl != nil {
+		return fmt.Sprintf("%s:%s> ", (*redisurl).Hostname(), (*redisurl).Port())
 	}
 
-	return "> "
+	return fmt.Sprintf("%s:%d> ", *redishost, *redisport)
 }
 
 // Commands is a holder for Redis Command structures
