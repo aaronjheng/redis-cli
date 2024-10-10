@@ -27,11 +27,6 @@ func (c *Client) Dial(ctx context.Context, protocol, address string) (net.Conn, 
 	return c.Client.DialContext(ctx, protocol, address)
 }
 
-// Deprecated: Use Dial instead.
-func (c *Client) DialContext(ctx context.Context, protocol, address string) (net.Conn, error) {
-	return c.Dial(ctx, protocol, address)
-}
-
 func newClient(cfg *Config) (*Client, error) {
 	identityFiles := []string{
 		"~/.ssh/id_ed25519",
