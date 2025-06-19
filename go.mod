@@ -1,6 +1,6 @@
 module github.com/aaronjheng/redis-cli
 
-go 1.23.0
+go 1.24.0
 
 replace github.com/gomodule/redigo => ./third_party/redigo
 
