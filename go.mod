@@ -2,8 +2,6 @@ module github.com/aaronjheng/redis-cli
 
 go 1.24.0
 
-replace github.com/gomodule/redigo => ./third_party/redigo
-
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/gomodule/redigo v1.9.2
