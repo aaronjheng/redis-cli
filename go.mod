@@ -1,6 +1,6 @@
 module github.com/aaronjheng/redis-cli
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
@@ -13,8 +13,8 @@ require (
 
 require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
-	github.com/clipperhouse/uax29/v2 v2.6.0 // indirect
-	github.com/mattn/go-runewidth v0.0.19 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/mattn/go-runewidth v0.0.21 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 )
