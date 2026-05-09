@@ -19,7 +19,6 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -38,6 +37,7 @@ import (
 	"github.com/peterh/liner"
 	"github.com/spf13/cobra"
 
+	rediscommands "github.com/aaronjheng/redis-cli/internal/redis"
 	"github.com/aaronjheng/redis-cli/internal/ssh"
 )
 
@@ -63,12 +63,9 @@ var ( //nolint:gochecknoglobals,nolintlint
 )
 
 var ( //nolint:gochecknoglobals,nolintlint
-	rawrediscommands = Commands{} //nolint:gochecknoglobals
-	raw              = false      //nolint:gochecknoglobals
+	rawrediscommands = rediscommands.Commands{} //nolint:gochecknoglobals
+	raw              = false                    //nolint:gochecknoglobals
 )
-
-//go:embed commands.json
-var redisCommandsJSON []byte //nolint:gochecknoglobals,nolintlint
 
 var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Use:     "redis-cli",
@@ -369,12 +366,12 @@ func runCommand(conn redis.Conn) error {
 }
 
 func runInteractive(conn redis.Conn) error {
-	err := json.Unmarshal(redisCommandsJSON, &rawrediscommands)
+	err := json.Unmarshal(rediscommands.CommandsJSON, &rawrediscommands)
 	if err != nil {
 		return fmt.Errorf("unmarshal commands: %w", err)
 	}
 
-	rediscommands, commandstrings := buildCommandIndex()
+	rediscommandsMap, commandstrings := buildCommandIndex()
 
 	linerInstance := liner.NewLiner()
 	defer linerInstance.Close()
@@ -385,13 +382,13 @@ func runInteractive(conn redis.Conn) error {
 		return completeCommand(line, commandstrings)
 	})
 
-	interactiveLoop(conn, linerInstance, rediscommands)
+	interactiveLoop(conn, linerInstance, rediscommandsMap)
 
 	return nil
 }
 
-func buildCommandIndex() (map[string]Command, []string) {
-	rediscommands := make(map[string]Command, len(rawrediscommands))
+func buildCommandIndex() (map[string]rediscommands.Command, []string) {
+	rediscommandsMap := make(map[string]rediscommands.Command, len(rawrediscommands))
 	commandstrings := make([]string, len(rawrediscommands))
 
 	idx := 0
@@ -400,12 +397,12 @@ func buildCommandIndex() (map[string]Command, []string) {
 		command := strings.ToLower(key)
 		commandstrings[idx] = command
 		idx++
-		rediscommands[command] = val
+		rediscommandsMap[command] = val
 	}
 
 	sort.Strings(commandstrings)
 
-	return rediscommands, commandstrings
+	return rediscommandsMap, commandstrings
 }
 
 func completeCommand(line string, commandstrings []string) []string {
@@ -431,7 +428,7 @@ func completeCommand(line string, commandstrings []string) []string {
 	return completions
 }
 
-func interactiveLoop(conn redis.Conn, linerInstance *liner.State, rediscommands map[string]Command) {
+func interactiveLoop(conn redis.Conn, linerInstance *liner.State, rediscommandsMap map[string]rediscommands.Command) {
 	for {
 		cmdForceRaw := false
 
@@ -456,7 +453,7 @@ func interactiveLoop(conn redis.Conn, linerInstance *liner.State, rediscommands 
 		linerInstance.AppendHistory(line)
 
 		if parts[0] == "help" {
-			if handleHelpCommand(parts, rediscommands) {
+			if handleHelpCommand(parts, rediscommandsMap) {
 				continue
 			}
 		}
@@ -492,7 +489,7 @@ func executeInteractiveCommand(conn redis.Conn, parts []string, forceraw bool) {
 }
 
 //nolint:mnd
-func handleHelpCommand(parts []string, rediscommands map[string]Command) bool {
+func handleHelpCommand(parts []string, rediscommandsMap map[string]rediscommands.Command) bool {
 	if len(parts) == 1 {
 		fmt.Fprintln(os.Stdout, "Enter help <command> to show information about a command")
 
@@ -504,7 +501,7 @@ func handleHelpCommand(parts []string, rediscommands map[string]Command) bool {
 		lookup = parts[1] + " " + parts[2]
 	}
 
-	commanddata, ok := rediscommands[lookup]
+	commanddata, ok := rediscommandsMap[lookup]
 	if !ok {
 		return false
 	}
@@ -637,24 +634,4 @@ func getPrompt() string {
 	}
 
 	return fmt.Sprintf("%s:%d> ", redishost, redisport)
-}
-
-// Commands is a holder for Redis Command structures.
-type Commands map[string]Command
-
-// Command is a holder for Redis Command data including arguments.
-type Command struct {
-	Summary    string     `json:"summary"`
-	Complexity string     `json:"complexity"`
-	Arguments  []Argument `json:"arguments"`
-	Since      string     `json:"since"`
-	Group      string     `json:"group"`
-}
-
-// Argument is a holder for Redis Command Argument data.
-type Argument struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Enum     string `json:"enum,omitempty"`
-	Optional bool   `json:"optional"`
 }
