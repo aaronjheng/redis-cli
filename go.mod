@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/gomodule/redigo v1.9.3
-	github.com/mattn/go-isatty v0.0.20
+	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-shellwords v1.0.13
 	github.com/peterh/liner v1.2.2
 	golang.org/x/crypto v0.51.0
