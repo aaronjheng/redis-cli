@@ -1,4 +1,4 @@
-redli
+redis
 dist/
 commands.go.old
 .DS_Store
