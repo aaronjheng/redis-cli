@@ -46,13 +46,13 @@ var ( //nolint:gochecknoglobals,nolintlint
 	redisurlStr     string   //nolint:gochecknoglobals
 	redishost       string   //nolint:gochecknoglobals
 	redisport       int      //nolint:gochecknoglobals
-	redisuser       string   //nolint:gochecknoglobals
+	user            string   //nolint:gochecknoglobals
 	redisauth       string   //nolint:gochecknoglobals
 	redisdb         int      //nolint:gochecknoglobals
 	redistls        bool     //nolint:gochecknoglobals
 	servername      string   //nolint:gochecknoglobals
-	skipverify      bool     //nolint:gochecknoglobals
-	rediscertfile   string   //nolint:gochecknoglobals
+	insecure        bool     //nolint:gochecknoglobals
+	cacertfile      string   //nolint:gochecknoglobals
 	rediscertb64    string   //nolint:gochecknoglobals
 	forceraw        bool     //nolint:gochecknoglobals
 	evalFile        string   //nolint:gochecknoglobals
@@ -72,7 +72,6 @@ func rootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "redis",
 		Short:        "A Redis CLI client",
-		Version:      version,
 		SilenceUsage: true,
 		Args:         cobra.ArbitraryArgs,
 		RunE:         runE,
@@ -86,20 +85,20 @@ func rootCmd() *cobra.Command {
 		"Host to connect to")
 	cmd.Flags().IntVarP(&redisport, "port", "p", defaultRedisPort,
 		"Port to connect to")
-	cmd.Flags().StringVarP(&redisuser, "redisuser", "r", "",
+	cmd.Flags().StringVarP(&user, "user", "r", "",
 		"Username to use when connecting. Supported since Redis 6.")
 	cmd.Flags().StringVarP(&redisauth, "auth", "a", "",
 		"Password to use when connecting")
-	cmd.Flags().IntVarP(&redisdb, "ndb", "n", 0,
+	cmd.Flags().IntVarP(&redisdb, "db", "n", 0,
 		"Redis database to access")
 	cmd.Flags().BoolVar(&redistls, "tls", false,
 		"Enable TLS/SSL")
-	cmd.Flags().StringVarP(&servername, "servername", "s", "",
-		"ServerName is used to verify the hostname on the returned certificates unless skipverify is set.")
-	cmd.Flags().BoolVar(&skipverify, "skipverify", false,
-		"Don't validate certificates")
-	cmd.Flags().StringVar(&rediscertfile, "certfile", "",
-		"Self-signed certificate file for validation")
+	cmd.Flags().StringVarP(&servername, "sni", "s", "",
+		"Server Name Indication for TLS certificate verification")
+	cmd.Flags().BoolVar(&insecure, "insecure", false,
+		"Disable certificate validation")
+	cmd.Flags().StringVar(&cacertfile, "cacert", "",
+		"CA certificate file for validation")
 	cmd.Flags().StringVar(&rediscertb64, "certb64", "",
 		"Self-signed certificate string as base64 for validation")
 	cmd.Flags().BoolVar(&forceraw, "raw", false,
@@ -110,6 +109,10 @@ func rootCmd() *cobra.Command {
 		"SSH tunnel connection URI. Format: [user[:pass]@]host[:port]")
 	cmd.Flags().StringVar(&sshIdentityFile, "ssh-identity-file", "",
 		"SSH identity file")
+
+	cmd.Version = version
+	cmd.InitDefaultVersionFlag()
+	cmd.Flags().Lookup("version").Usage = "Print version"
 
 	return cmd
 }
@@ -163,9 +166,9 @@ func runE(cmd *cobra.Command, args []string) error {
 }
 
 func loadCertFromEnv(cmd *cobra.Command) {
-	if !cmd.Flags().Changed("certfile") {
-		if val := os.Getenv("REDIS_CERTFILE"); val != "" {
-			rediscertfile = val
+	if !cmd.Flags().Changed("cacert") {
+		if val := os.Getenv("REDIS_CACERT"); val != "" {
+			cacertfile = val
 		}
 	}
 
@@ -177,8 +180,8 @@ func loadCertFromEnv(cmd *cobra.Command) {
 }
 
 func loadCert() ([]byte, error) {
-	if rediscertfile != "" {
-		cert, err := os.ReadFile(rediscertfile)
+	if cacertfile != "" {
+		cert, err := os.ReadFile(cacertfile)
 		if err != nil {
 			return nil, fmt.Errorf("read cert file: %w", err)
 		}
@@ -207,7 +210,7 @@ func buildConnectionURL() string {
 		}
 
 		if redisauth != "" {
-			connectionurl += url.QueryEscape(redisuser) + ":" + url.QueryEscape(redisauth) + "@"
+			connectionurl += url.QueryEscape(user) + ":" + url.QueryEscape(redisauth) + "@"
 		}
 
 		connectionurl += redishost + ":" + strconv.Itoa(redisport) + "/" + strconv.Itoa(redisdb)
@@ -222,7 +225,7 @@ func buildDialOptions(cert []byte) ([]redis.DialOption, error) {
 	dialOptions := []redis.DialOption{}
 
 	//nolint:gosec
-	config := &tls.Config{InsecureSkipVerify: skipverify}
+	config := &tls.Config{InsecureSkipVerify: insecure}
 
 	if len(cert) > 0 {
 		config.RootCAs = x509.NewCertPool()
