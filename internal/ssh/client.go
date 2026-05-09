@@ -24,7 +24,12 @@ type Client struct {
 }
 
 func (c *Client) Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
-	return c.Client.DialContext(ctx, protocol, address)
+	conn, err := c.DialContext(ctx, protocol, address)
+	if err != nil {
+		return nil, fmt.Errorf("dial context: %w", err)
+	}
+
+	return conn, nil
 }
 
 func newClient(cfg *Config) (*Client, error) {
@@ -44,6 +49,7 @@ func newClient(cfg *Config) (*Client, error) {
 		return nil, fmt.Errorf("sshSignersFromIdentityFiles error: %w", err)
 	}
 
+	//nolint:gosec
 	sshCfg := &ssh.ClientConfig{
 		User:            cfg.Username,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -72,28 +78,30 @@ func sshSignersFromIdentityFiles(identityFiles []string) ([]ssh.Signer, error) {
 		return nil, fmt.Errorf("os.UserHomeDir error: %w", err)
 	}
 
-	for _, f := range identityFiles {
-		if homeDir != "" && strings.HasPrefix(f, "~/") {
-			f = filepath.Join(homeDir, f[2:])
+	for _, identityFile := range identityFiles {
+		resolved := identityFile
+
+		if homeDir != "" && strings.HasPrefix(resolved, "~/") {
+			resolved = filepath.Join(homeDir, resolved[2:])
 		}
 
-		_, err := os.Stat(f)
-		if err != nil {
-			if os.IsNotExist(err) {
+		_, statErr := os.Stat(resolved)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
 				continue
-			} else {
-				return nil, fmt.Errorf("os.Stat error: %w", err)
 			}
+
+			return nil, fmt.Errorf("os.Stat error: %w", statErr)
 		}
 
-		raw, err := os.ReadFile(f)
-		if err != nil {
-			return nil, fmt.Errorf("os.ReadFile error: %w", err)
+		raw, fileErr := os.ReadFile(resolved)
+		if fileErr != nil {
+			return nil, fmt.Errorf("os.ReadFile error: %w", fileErr)
 		}
 
-		signer, err := ssh.ParsePrivateKey(raw)
-		if err != nil {
-			return nil, fmt.Errorf("ssh.ParsePrivateKey error: %w", err)
+		signer, parseErr := ssh.ParsePrivateKey(raw)
+		if parseErr != nil {
+			return nil, fmt.Errorf("ssh.ParsePrivateKey error: %w", parseErr)
 		}
 
 		signers = append(signers, signer)
