@@ -23,7 +23,17 @@ just update-commands
 just install
 ```
 
-No tests exist in this repo currently.
+## Code Quality
+
+### Formatting
+
+- Use `gofumpt` for formatting.
+- Use `gci` for import ordering (standard, default, localmodule).
+
+### Linting
+
+- All lint errors must be fixed before committing.
+- Do not enable deprecated linters.
 
 ## Git Workflow
 
