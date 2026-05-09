@@ -78,10 +78,11 @@ func rootCmd() *cobra.Command {
 	}
 
 	cmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	cmd.Flags().Bool("help", false, "Help for redis")
 
 	cmd.Flags().StringVarP(&redisurlStr, "uri", "u", "",
 		"URI to connect to")
-	cmd.Flags().StringVarP(&redishost, "host", "H", "127.0.0.1",
+	cmd.Flags().StringVarP(&redishost, "host", "h", "127.0.0.1",
 		"Host to connect to")
 	cmd.Flags().IntVarP(&redisport, "port", "p", defaultRedisPort,
 		"Port to connect to")
