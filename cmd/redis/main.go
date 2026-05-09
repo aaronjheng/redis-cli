@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"regexp"
@@ -67,62 +66,58 @@ var ( //nolint:gochecknoglobals,nolintlint
 	raw              = false                    //nolint:gochecknoglobals
 )
 
-var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
-	Use:     "redis-cli",
-	Short:   "A Redis CLI client",
-	Version: version,
-	Run:     run,
-}
-
 var errCertLoadFailed = errors.New("couldn't load cert data")
 
-//nolint:gochecknoinits
-func init() {
-	rootCmd.Flags().StringVarP(&redisurlStr, "uri", "u", "",
+func rootCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "redis",
+		Short:        "A Redis CLI client",
+		Version:      version,
+		SilenceUsage: true,
+		Args:         cobra.ArbitraryArgs,
+		RunE:         runE,
+	}
+
+	cmd.SetHelpCommand(&cobra.Command{Hidden: true})
+
+	cmd.Flags().StringVarP(&redisurlStr, "uri", "u", "",
 		"URI to connect to")
-	rootCmd.Flags().StringVarP(&redishost, "host", "H", "127.0.0.1",
+	cmd.Flags().StringVarP(&redishost, "host", "H", "127.0.0.1",
 		"Host to connect to")
-	rootCmd.Flags().IntVarP(&redisport, "port", "p", defaultRedisPort,
+	cmd.Flags().IntVarP(&redisport, "port", "p", defaultRedisPort,
 		"Port to connect to")
-	rootCmd.Flags().StringVarP(&redisuser, "redisuser", "r", "",
+	cmd.Flags().StringVarP(&redisuser, "redisuser", "r", "",
 		"Username to use when connecting. Supported since Redis 6.")
-	rootCmd.Flags().StringVarP(&redisauth, "auth", "a", "",
+	cmd.Flags().StringVarP(&redisauth, "auth", "a", "",
 		"Password to use when connecting")
-	rootCmd.Flags().IntVarP(&redisdb, "ndb", "n", 0,
+	cmd.Flags().IntVarP(&redisdb, "ndb", "n", 0,
 		"Redis database to access")
-	rootCmd.Flags().BoolVar(&redistls, "tls", false,
+	cmd.Flags().BoolVar(&redistls, "tls", false,
 		"Enable TLS/SSL")
-	rootCmd.Flags().StringVarP(&servername, "servername", "s", "",
+	cmd.Flags().StringVarP(&servername, "servername", "s", "",
 		"ServerName is used to verify the hostname on the returned certificates unless skipverify is set.")
-	rootCmd.Flags().BoolVar(&skipverify, "skipverify", false,
+	cmd.Flags().BoolVar(&skipverify, "skipverify", false,
 		"Don't validate certificates")
-	rootCmd.Flags().StringVar(&rediscertfile, "certfile", "",
+	cmd.Flags().StringVar(&rediscertfile, "certfile", "",
 		"Self-signed certificate file for validation")
-	rootCmd.Flags().StringVar(&rediscertb64, "certb64", "",
+	cmd.Flags().StringVar(&rediscertb64, "certb64", "",
 		"Self-signed certificate string as base64 for validation")
-	rootCmd.Flags().BoolVar(&forceraw, "raw", false,
+	cmd.Flags().BoolVar(&forceraw, "raw", false,
 		"Produce raw output")
-	rootCmd.Flags().StringVar(&evalFile, "eval", "",
+	cmd.Flags().StringVar(&evalFile, "eval", "",
 		"Evaluate a Lua script file, follow with keys a , and args")
-	rootCmd.Flags().StringVar(&sshURI, "ssh", "",
+	cmd.Flags().StringVar(&sshURI, "ssh", "",
 		"SSH tunnel connection URI. Format: [user[:pass]@]host[:port]")
-	rootCmd.Flags().StringVar(&sshIdentityFile, "ssh-identity-file", "",
+	cmd.Flags().StringVar(&sshIdentityFile, "ssh-identity-file", "",
 		"SSH identity file")
+
+	return cmd
 }
 
 func main() {
-	rootCmd.Args = cobra.ArbitraryArgs
-
-	err := rootCmd.Execute()
+	err := rootCmd().Execute()
 	if err != nil {
 		os.Exit(1)
-	}
-}
-
-func run(cmd *cobra.Command, args []string) {
-	err := runE(cmd, args)
-	if err != nil {
-		log.Fatal(err)
 	}
 }
 
