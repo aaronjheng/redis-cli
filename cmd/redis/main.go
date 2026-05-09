@@ -78,7 +78,7 @@ func rootCmd() *cobra.Command {
 	}
 
 	cmd.SetHelpCommand(&cobra.Command{Hidden: true})
-	cmd.Flags().Bool("help", false, "Help for redis")
+	cmd.Flags().SortFlags = false
 
 	cmd.Flags().StringVarP(&redisurlStr, "uri", "u", "",
 		"URI to connect to")
@@ -86,12 +86,12 @@ func rootCmd() *cobra.Command {
 		"Host to connect to")
 	cmd.Flags().IntVarP(&redisport, "port", "p", defaultRedisPort,
 		"Port to connect to")
-	cmd.Flags().StringVarP(&user, "user", "r", "",
-		"Username to use when connecting. Supported since Redis 6.")
-	cmd.Flags().StringVarP(&redisauth, "auth", "a", "",
-		"Password to use when connecting")
 	cmd.Flags().IntVarP(&redisdb, "db", "n", 0,
 		"Redis database to access")
+	cmd.Flags().StringVarP(&user, "user", "r", "",
+		"Username to use when connecting. Supported since Redis 6.")
+	cmd.Flags().StringVarP(&redisauth, "password", "a", "",
+		"Password to use when connecting")
 	cmd.Flags().BoolVar(&redistls, "tls", false,
 		"Enable TLS/SSL")
 	cmd.Flags().StringVarP(&servername, "sni", "s", "",
@@ -102,18 +102,20 @@ func rootCmd() *cobra.Command {
 		"CA certificate file for validation")
 	cmd.Flags().StringVar(&rediscertb64, "certb64", "",
 		"Self-signed certificate string as base64 for validation")
-	cmd.Flags().BoolVar(&forceraw, "raw", false,
-		"Produce raw output")
-	cmd.Flags().StringVar(&evalFile, "eval", "",
-		"Evaluate a Lua script file, follow with keys a , and args")
 	cmd.Flags().StringVar(&sshURI, "ssh", "",
 		"SSH tunnel connection URI. Format: [user[:pass]@]host[:port]")
 	cmd.Flags().StringVar(&sshIdentityFile, "ssh-identity-file", "",
 		"SSH identity file")
+	cmd.Flags().BoolVar(&forceraw, "raw", false,
+		"Produce raw output")
+	cmd.Flags().StringVar(&evalFile, "eval", "",
+		"Evaluate a Lua script file, follow with keys a , and args")
 
 	cmd.Version = version
 	cmd.InitDefaultVersionFlag()
 	cmd.Flags().Lookup("version").Usage = "Print version"
+
+	cmd.Flags().Bool("help", false, "Help for redis")
 
 	return cmd
 }
