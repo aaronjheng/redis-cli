@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"os"
@@ -33,31 +32,31 @@ import (
 	"strings"
 
 	"github.com/aaronjheng/redis-cli/internal/ssh"
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/gomodule/redigo/redis"
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/go-shellwords"
 	"github.com/peterh/liner"
+	"github.com/spf13/cobra"
 )
 
 var (
-	redisurl      = kingpin.Flag("uri", "URI to connect to").Short('u').URL()
-	redishost     = kingpin.Flag("host", "Host to connect to").Short('h').Default("127.0.0.1").String()
-	redisport     = kingpin.Flag("port", "Port to connect to").Short('p').Default("6379").Int()
-	redisuser     = kingpin.Flag("redisuser", "Username to use when connecting. Supported since Redis 6.").Short('r').Default("").String()
-	redisauth     = kingpin.Flag("auth", "Password to use when connecting").Short('a').String()
-	redisdb       = kingpin.Flag("ndb", "Redis database to access").Short('n').Default("0").Int()
-	redistls      = kingpin.Flag("tls", "Enable TLS/SSL").Default("false").Bool()
-	servername    = kingpin.Flag("servername", "ServerName is used to verify the hostname on the returned certificates unless skipverify is set.").Short('s').String()
-	skipverify    = kingpin.Flag("skipverify", "Don't validate certificates").Default("false").Bool()
-	rediscertfile = kingpin.Flag("certfile", "Self-signed certificate file for validation").Envar("REDIS_CERTFILE").File()
-	rediscertb64  = kingpin.Flag("certb64", "Self-signed certificate string as base64 for validation").Envar("REDIS_CERTB64").String()
-	forceraw      = kingpin.Flag("raw", "Produce raw output").Bool()
-	eval          = kingpin.Flag("eval", "Evaluate a Lua script file, follow with keys a , and args").File()
-	commandargs   = kingpin.Arg("commands", "Redis commands and values").Strings()
+	redisurlStr   string
+	redishost     string
+	redisport     int
+	redisuser     string
+	redisauth     string
+	redisdb       int
+	redistls      bool
+	servername    string
+	skipverify    bool
+	rediscertfile string
+	rediscertb64  string
+	forceraw      bool
+	evalFile      string
+	commandargs   []string
 
-	sshUri          = kingpin.Flag("ssh", "SSH tunnel connection URI. Format: [user[:pass]@]host[:port]").Default("").String()
-	sshIdentityFile = kingpin.Flag("ssh-identity-file", "SSH identity file").Default("").String()
+	sshUri          string
+	sshIdentityFile string
 )
 
 var (
@@ -68,11 +67,54 @@ var (
 //go:embed commands.json
 var redisCommandsJSON []byte
 
-func main() {
-	kingpin.Version(version)
-	kingpin.Parse()
+var rootCmd = &cobra.Command{
+	Use:     "redis-cli",
+	Short:   "A Redis CLI client",
+	Version: version,
+	Run:     run,
+}
 
-	if *forceraw {
+func init() {
+	rootCmd.Flags().StringVarP(&redisurlStr, "uri", "u", "", "URI to connect to")
+	rootCmd.Flags().StringVarP(&redishost, "host", "H", "127.0.0.1", "Host to connect to")
+	rootCmd.Flags().IntVarP(&redisport, "port", "p", 6379, "Port to connect to")
+	rootCmd.Flags().StringVarP(&redisuser, "redisuser", "r", "", "Username to use when connecting. Supported since Redis 6.")
+	rootCmd.Flags().StringVarP(&redisauth, "auth", "a", "", "Password to use when connecting")
+	rootCmd.Flags().IntVarP(&redisdb, "ndb", "n", 0, "Redis database to access")
+	rootCmd.Flags().BoolVar(&redistls, "tls", false, "Enable TLS/SSL")
+	rootCmd.Flags().StringVarP(&servername, "servername", "s", "", "ServerName is used to verify the hostname on the returned certificates unless skipverify is set.")
+	rootCmd.Flags().BoolVar(&skipverify, "skipverify", false, "Don't validate certificates")
+	rootCmd.Flags().StringVar(&rediscertfile, "certfile", "", "Self-signed certificate file for validation")
+	rootCmd.Flags().StringVar(&rediscertb64, "certb64", "", "Self-signed certificate string as base64 for validation")
+	rootCmd.Flags().BoolVar(&forceraw, "raw", false, "Produce raw output")
+	rootCmd.Flags().StringVar(&evalFile, "eval", "", "Evaluate a Lua script file, follow with keys a , and args")
+	rootCmd.Flags().StringVar(&sshUri, "ssh", "", "SSH tunnel connection URI. Format: [user[:pass]@]host[:port]")
+	rootCmd.Flags().StringVar(&sshIdentityFile, "ssh-identity-file", "", "SSH identity file")
+
+}
+
+func main() {
+	rootCmd.Args = cobra.ArbitraryArgs
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func run(cmd *cobra.Command, args []string) {
+	commandargs = args
+
+	if !cmd.Flags().Changed("certfile") {
+		if v := os.Getenv("REDIS_CERTFILE"); v != "" {
+			rediscertfile = v
+		}
+	}
+	if !cmd.Flags().Changed("certb64") {
+		if v := os.Getenv("REDIS_CERTB64"); v != "" {
+			rediscertb64 = v
+		}
+	}
+
+	if forceraw {
 		raw = true
 	} else {
 		if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
@@ -82,14 +124,14 @@ func main() {
 
 	cert := []byte{}
 
-	if *rediscertfile != nil {
-		mycert, err := io.ReadAll(*rediscertfile)
+	if rediscertfile != "" {
+		mycert, err := os.ReadFile(rediscertfile)
 		if err != nil {
 			log.Fatal(err)
 		}
 		cert = mycert
-	} else if rediscertb64 != nil {
-		mycert, err := base64.StdEncoding.DecodeString((*rediscertb64))
+	} else if rediscertb64 != "" {
+		mycert, err := base64.StdEncoding.DecodeString(rediscertb64)
 		if err != nil {
 			log.Fatal("What", err)
 		}
@@ -98,27 +140,25 @@ func main() {
 
 	connectionurl := ""
 
-	if *redisurl == nil {
-		// With no URI, build a URI from other flags
-		if *redistls {
+	if redisurlStr == "" {
+		if redistls {
 			connectionurl = "rediss://"
 		} else {
 			connectionurl = "redis://"
 		}
 
-		if redisauth != nil {
-			connectionurl = connectionurl + url.QueryEscape(*redisuser) + ":" + url.QueryEscape(*redisauth) + "@"
+		if redisauth != "" {
+			connectionurl = connectionurl + url.QueryEscape(redisuser) + ":" + url.QueryEscape(redisauth) + "@"
 		}
 
-		connectionurl = connectionurl + *redishost + ":" + strconv.Itoa(*redisport) + "/" + strconv.Itoa(*redisdb)
+		connectionurl = connectionurl + redishost + ":" + strconv.Itoa(redisport) + "/" + strconv.Itoa(redisdb)
 	} else {
-		connectionurl = (*redisurl).String()
+		connectionurl = redisurlStr
 	}
 
 	dialOptions := []redis.DialOption{}
 
-	config := &tls.Config{InsecureSkipVerify: *skipverify}
-	// If we have a certificate, then assume TLS
+	config := &tls.Config{InsecureSkipVerify: skipverify}
 	if len(cert) > 0 {
 		config.RootCAs = x509.NewCertPool()
 		config.ClientAuth = tls.RequireAndVerifyClientCert
@@ -128,15 +168,14 @@ func main() {
 		}
 	}
 
-	if servername != nil && *servername != "" {
-		config.ServerName = *servername
+	if servername != "" {
+		config.ServerName = servername
 	}
 
 	dialOptions = append(dialOptions, redis.DialTLSConfig(config))
 
-	// SSH Tunnel
-	if *sshUri != "" {
-		u, err := url.Parse("ssh://" + *sshUri)
+	if sshUri != "" {
+		u, err := url.Parse("ssh://" + sshUri)
 		if err != nil {
 		}
 
@@ -147,7 +186,7 @@ func main() {
 			Port:         u.Port(),
 			Username:     u.User.Username(),
 			Password:     password,
-			IdentityFile: *sshIdentityFile,
+			IdentityFile: sshIdentityFile,
 		}
 		dialFunc, err := ssh.NewDialerFunc(cfg)
 		if err != nil {
@@ -163,9 +202,6 @@ func main() {
 	conn, err := redis.DialURL(connectionurl, dialOptions...)
 
 	if err != nil && err.Error() == "ERR wrong number of arguments for 'auth' command" {
-		// Fallback to support usernames with Redis versions without ACL support
-		// Since at this point we constructed a valid URL that has to be escaped properly
-		// this regex should work...
 		re := regexp.MustCompile(`^(rediss?://)(.*)(:.*@.*)`)
 		connectionurl = re.ReplaceAllString(connectionurl, `$1$3`)
 		conn, err = redis.DialURL(connectionurl, dialOptions...)
@@ -176,11 +212,8 @@ func main() {
 	}
 	defer conn.Close()
 
-	// We may not need to carry on setting up the interactive front end so...
-	if *eval != nil {
-		command := *commandargs
-
-		scriptsrc, err := io.ReadAll(*eval)
+	if evalFile != "" {
+		scriptsrc, err := os.ReadFile(evalFile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -189,13 +222,12 @@ func main() {
 
 		keycnt := 0
 
-		// If there are other arguments, process them
-		if len(command) > 0 {
-			args := make([]interface{}, len(command[:]))
+		if len(commandargs) > 0 {
+			args := make([]interface{}, len(commandargs[:]))
 
 			gotcomma := false
 
-			for i, d := range command {
+			for i, d := range commandargs {
 				if !gotcomma {
 					if d == "," {
 						gotcomma = true
@@ -222,23 +254,21 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *commandargs != nil {
-		command := *commandargs
+	if len(commandargs) > 0 {
+		catchMonitorCmd(conn, commandargs[0])
 
-		catchMonitorCmd(conn, command[0])
-
-		args := make([]interface{}, len(command[1:]))
-		for i, d := range command[1:] {
+		args := make([]interface{}, len(commandargs[1:]))
+		for i, d := range commandargs[1:] {
 			args[i] = d
 		}
-		result, err := conn.Do(command[0], args...)
+		result, err := conn.Do(commandargs[0], args...)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		forceraw := false
 
-		if strings.ToLower(command[0]) == "info" {
+		if strings.ToLower(commandargs[0]) == "info" {
 			forceraw = true
 		}
 
@@ -296,13 +326,13 @@ func main() {
 		}
 
 		if len(line) == 0 {
-			continue // Ignore no input
+			continue
 		}
 
 		parts, err := shellwords.Parse(line)
 
 		if len(parts) == 0 {
-			continue // Ignore no input
+			continue
 		}
 
 		liner.AppendHistory(line)
@@ -430,11 +460,14 @@ func toRedisValueString(value interface{}, forceraw bool) string {
 }
 
 func getPrompt() string {
-	if *redisurl != nil {
-		return fmt.Sprintf("%s:%s> ", (*redisurl).Hostname(), (*redisurl).Port())
+	if redisurlStr != "" {
+		u, err := url.Parse(redisurlStr)
+		if err == nil {
+			return fmt.Sprintf("%s:%s> ", u.Hostname(), u.Port())
+		}
 	}
 
-	return fmt.Sprintf("%s:%d> ", *redishost, *redisport)
+	return fmt.Sprintf("%s:%d> ", redishost, redisport)
 }
 
 // Commands is a holder for Redis Command structures
