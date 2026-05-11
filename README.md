@@ -73,6 +73,4 @@ Be aware of interactions with wild cards and special characters in the shell; qu
 
 Redis CLI is licensed under the [Apache License 2.0](https://opensource.org/licenses/Apache-2.0). See [LICENSE](LICENSE) for more details.
 
-This project is forked from [IBM-Cloud/redli](https://github.com/IBM-Cloud/redli), (c) IBM Corporation 2018-2024. All rights reserved.
-
 The `commands.json` file is by Salvatore Sanfilippo and is distributed under a [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license (see [Copyright](https://github.com/antirez/redis-doc/blob/master/COPYRIGHT)).
