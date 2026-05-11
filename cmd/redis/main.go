@@ -78,6 +78,7 @@ func rootCmd() *cobra.Command {
 	}
 
 	cmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	cmd.AddCommand(completionCmd())
 	cmd.Flags().SortFlags = false
 
 	cmd.Flags().StringVarP(&redisurlStr, "uri", "u", "",

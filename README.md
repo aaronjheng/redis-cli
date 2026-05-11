@@ -45,6 +45,17 @@ Flags:
 
 The URI follows the format of [the provisional IANA spec for Redis URLs](https://www.iana.org/assignments/uri-schemes/prov/redis), with the option to denote a TLS secured connection with the `rediss://` protocol.
 
+### Shell Completion
+
+`redis` supports shell completion for Bash, Zsh, and Fish.
+
+```bash
+# Load completion for current session
+source <(redis completion bash)  # or zsh / fish
+```
+
+To install permanently, run `redis completion <shell> --help` for instructions.
+
 ### Examples
 
 ```bash
