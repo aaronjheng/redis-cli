@@ -1,8 +1,6 @@
 # Redis CLI
 
-A Go-based alternative to the official redis-cli application.
-
-> **Fork of [IBM-Cloud/redli](https://github.com/IBM-Cloud/redli)**
+A Go-based alternative to the official redis-cli application. Fork of [IBM-Cloud/redli](https://github.com/IBM-Cloud/redli).
 
 ## Installation
 
