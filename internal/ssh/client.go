@@ -13,9 +13,8 @@ import (
 
 type Config struct {
 	Host         string
-	Port         string
-	Username     string
-	Password     string
+	Port         int32
+	User         string
 	IdentityFile string
 }
 
@@ -23,21 +22,7 @@ type Client struct {
 	*ssh.Client
 }
 
-func (c *Client) Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
-	conn, err := c.DialContext(ctx, protocol, address)
-	if err != nil {
-		return nil, fmt.Errorf("dial context: %w", err)
-	}
-
-	return conn, nil
-}
-
-//nolint:gosec
-func insecureHostKeyCallback() ssh.HostKeyCallback {
-	return ssh.InsecureIgnoreHostKey()
-}
-
-func newClient(cfg *Config) (*Client, error) {
+func NewClient(cfg *Config) (*Client, error) {
 	identityFiles := []string{
 		"~/.ssh/id_ed25519",
 		"~/.ssh/id_ecdsa",
@@ -45,7 +30,7 @@ func newClient(cfg *Config) (*Client, error) {
 		"~/.ssh/id_rsa",
 	}
 
-	if cfg.IdentityFile == "" {
+	if cfg.IdentityFile != "" {
 		identityFiles = append([]string{cfg.IdentityFile}, identityFiles...)
 	}
 
@@ -55,14 +40,15 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 
 	sshCfg := &ssh.ClientConfig{
-		User:            cfg.Username,
-		HostKeyCallback: insecureHostKeyCallback(),
+		User: cfg.User,
+		// #nosec G106 -- compatibility mode: allow connecting to hosts not present in known_hosts.
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signers...),
 		},
 	}
 
-	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", cfg.Host, cfg.Port), sshCfg)
+	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port), sshCfg)
 	if err != nil {
 		return nil, fmt.Errorf("ssh.Dial error: %w", err)
 	}
@@ -112,4 +98,18 @@ func sshSignersFromIdentityFiles(identityFiles []string) ([]ssh.Signer, error) {
 	}
 
 	return signers, nil
+}
+
+func (c *Client) Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
+	conn, err := c.Client.DialContext(ctx, protocol, address)
+	if err != nil {
+		return nil, fmt.Errorf("ssh.Client.DialContext error: %w", err)
+	}
+
+	return conn, nil
+}
+
+// Deprecated: Use Dial instead.
+func (c *Client) DialContext(ctx context.Context, protocol, address string) (net.Conn, error) {
+	return c.Dial(ctx, protocol, address)
 }

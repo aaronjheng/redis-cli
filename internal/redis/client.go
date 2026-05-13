@@ -140,13 +140,20 @@ func buildSSHDialOptions(sshURI, sshIdentityFile string) ([]redigo.DialOption, e
 		return nil, fmt.Errorf("parse SSH URI: %w", err)
 	}
 
-	password, _ := sshURL.User.Password()
+	port := sshURL.Port()
+	if port == "" {
+		port = "22"
+	}
+
+	portNum, err := strconv.ParseInt(port, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("parse SSH port: %w", err)
+	}
 
 	cfg := &ssh.Config{
 		Host:         sshURL.Hostname(),
-		Port:         sshURL.Port(),
-		Username:     sshURL.User.Username(),
-		Password:     password,
+		Port:         int32(portNum),
+		User:         sshURL.User.Username(),
 		IdentityFile: sshIdentityFile,
 	}
 
