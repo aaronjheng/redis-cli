@@ -23,7 +23,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	rediscommands "github.com/aaronjheng/redis-cli/internal/redis"
+	internalredis "github.com/aaronjheng/redis-cli/internal/redis"
 )
 
 const defaultRedisPort = 6379
@@ -106,12 +106,12 @@ func runE(cmd *cobra.Command, args []string) error {
 
 	raw := forceRaw || !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd())
 
-	cert, err := rediscommands.LoadCert(caCertFile, certB64)
+	cert, err := internalredis.LoadCert(caCertFile, certB64)
 	if err != nil {
 		return fmt.Errorf("load cert: %w", err)
 	}
 
-	conn, err := rediscommands.Dial(rediscommands.DialConfig{
+	conn, err := internalredis.Dial(internalredis.DialConfig{
 		URI:             uri,
 		Host:            host,
 		Port:            port,
@@ -131,19 +131,19 @@ func runE(cmd *cobra.Command, args []string) error {
 
 	defer conn.Close()
 
-	printer := &rediscommands.Printer{Raw: raw}
+	printer := &internalredis.Printer{Raw: raw}
 
 	if evalFile != "" {
-		return fmt.Errorf("run eval script: %w", rediscommands.RunEvalScript(conn, evalFile, args, printer))
+		return fmt.Errorf("run eval script: %w", internalredis.RunEvalScript(conn, evalFile, args, printer))
 	}
 
 	if len(args) > 0 {
-		return fmt.Errorf("run command: %w", rediscommands.RunCommand(conn, args, printer))
+		return fmt.Errorf("run command: %w", internalredis.RunCommand(conn, args, printer))
 	}
 
 	return fmt.Errorf(
 		"run interactive: %w",
-		rediscommands.RunInteractive(conn, uri, host, port, printer),
+		internalredis.RunInteractive(conn, uri, host, port, printer),
 	)
 }
 
