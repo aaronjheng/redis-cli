@@ -32,6 +32,11 @@ func (c *Client) Dial(ctx context.Context, protocol, address string) (net.Conn, 
 	return conn, nil
 }
 
+//nolint:gosec
+func insecureHostKeyCallback() ssh.HostKeyCallback {
+	return ssh.InsecureIgnoreHostKey()
+}
+
 func newClient(cfg *Config) (*Client, error) {
 	identityFiles := []string{
 		"~/.ssh/id_ed25519",
@@ -49,10 +54,9 @@ func newClient(cfg *Config) (*Client, error) {
 		return nil, fmt.Errorf("sshSignersFromIdentityFiles error: %w", err)
 	}
 
-	//nolint:gosec
 	sshCfg := &ssh.ClientConfig{
 		User:            cfg.Username,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: insecureHostKeyCallback(),
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signers...),
 		},

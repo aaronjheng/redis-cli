@@ -33,16 +33,16 @@ type DialConfig struct {
 	Cert            []byte
 }
 
-func LoadCert(cacertfile, certb64 string) ([]byte, error) {
-	if cacertfile != "" {
-		cert, err := os.ReadFile(cacertfile)
+func LoadCert(caCertFile, certB64 string) ([]byte, error) {
+	if caCertFile != "" {
+		cert, err := os.ReadFile(caCertFile)
 		if err != nil {
 			return nil, fmt.Errorf("read cert file: %w", err)
 		}
 
 		return cert, nil
-	} else if certb64 != "" {
-		cert, err := base64.StdEncoding.DecodeString(certb64)
+	} else if certB64 != "" {
+		cert, err := base64.StdEncoding.DecodeString(certB64)
 		if err != nil {
 			return nil, fmt.Errorf("decode base64 cert: %w", err)
 		}
@@ -91,10 +91,8 @@ func buildConnectionURL(cfg DialConfig) string {
 	return connectionurl
 }
 
-func buildDialOptions(cfg DialConfig) ([]redigo.DialOption, error) {
-	dialOptions := []redigo.DialOption{}
-
-	//nolint:gosec
+//nolint:gosec
+func newTLSConfig(cfg DialConfig) (*tls.Config, error) {
 	config := &tls.Config{InsecureSkipVerify: cfg.Insecure}
 
 	if len(cfg.Cert) > 0 {
@@ -109,6 +107,17 @@ func buildDialOptions(cfg DialConfig) ([]redigo.DialOption, error) {
 
 	if cfg.ServerName != "" {
 		config.ServerName = cfg.ServerName
+	}
+
+	return config, nil
+}
+
+func buildDialOptions(cfg DialConfig) ([]redigo.DialOption, error) {
+	dialOptions := []redigo.DialOption{}
+
+	config, err := newTLSConfig(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	dialOptions = append(dialOptions, redigo.DialTLSConfig(config))

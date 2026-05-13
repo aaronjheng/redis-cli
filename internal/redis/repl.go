@@ -144,7 +144,6 @@ func executeInteractiveCommand(conn redigo.Conn, parts []string, printer *Printe
 	printer.PrintIndenting(result, "", forceRaw)
 }
 
-//nolint:mnd
 func handleHelpCommand(parts []string, rediscommandsMap map[string]Command) bool {
 	if len(parts) == 1 {
 		fmt.Fprintln(os.Stdout, "Enter help <command> to show information about a command")
@@ -152,17 +151,16 @@ func handleHelpCommand(parts []string, rediscommandsMap map[string]Command) bool
 		return true
 	}
 
-	lookup := parts[1]
-	if len(parts) == 3 {
-		lookup = parts[1] + " " + parts[2]
-	}
+	return printCommandHelp(strings.Join(parts[1:], " "), rediscommandsMap)
+}
 
-	commanddata, ok := rediscommandsMap[lookup]
+func printCommandHelp(name string, rediscommandsMap map[string]Command) bool {
+	commanddata, ok := rediscommandsMap[name]
 	if !ok {
 		return false
 	}
 
-	fmt.Fprintf(os.Stdout, "Command: %s\n", strings.ToUpper(lookup))
+	fmt.Fprintf(os.Stdout, "Command: %s\n", strings.ToUpper(name))
 	fmt.Fprintf(os.Stdout, "Summary: %s\n", commanddata.Summary)
 
 	if commanddata.Complexity != "" {

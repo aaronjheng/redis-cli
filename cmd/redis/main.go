@@ -28,27 +28,6 @@ import (
 
 const defaultRedisPort = 6379
 
-var ( //nolint:gochecknoglobals,nolintlint
-	redisurlStr     string   //nolint:gochecknoglobals
-	redishost       string   //nolint:gochecknoglobals
-	redisport       int      //nolint:gochecknoglobals
-	user            string   //nolint:gochecknoglobals
-	redisauth       string   //nolint:gochecknoglobals
-	redisdb         int      //nolint:gochecknoglobals
-	redistls        bool     //nolint:gochecknoglobals
-	servername      string   //nolint:gochecknoglobals
-	insecure        bool     //nolint:gochecknoglobals
-	cacertfile      string   //nolint:gochecknoglobals
-	rediscertb64    string   //nolint:gochecknoglobals
-	forceraw        bool     //nolint:gochecknoglobals
-	evalFile        string   //nolint:gochecknoglobals
-	commandargs     []string //nolint:gochecknoglobals
-	sshURI          string   //nolint:gochecknoglobals
-	sshIdentityFile string   //nolint:gochecknoglobals
-)
-
-var raw = false //nolint:gochecknoglobals
-
 func rootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "redis",
@@ -62,35 +41,35 @@ func rootCmd() *cobra.Command {
 	cmd.AddCommand(completionCmd())
 	cmd.Flags().SortFlags = false
 
-	cmd.Flags().StringVarP(&redisurlStr, "uri", "u", "",
+	cmd.Flags().StringP("uri", "u", "",
 		"URI to connect to")
-	cmd.Flags().StringVarP(&redishost, "host", "h", "127.0.0.1",
+	cmd.Flags().StringP("host", "h", "127.0.0.1",
 		"Host to connect to")
-	cmd.Flags().IntVarP(&redisport, "port", "p", defaultRedisPort,
+	cmd.Flags().IntP("port", "p", defaultRedisPort,
 		"Port to connect to")
-	cmd.Flags().IntVarP(&redisdb, "db", "n", 0,
+	cmd.Flags().IntP("db", "n", 0,
 		"Redis database to access")
-	cmd.Flags().StringVarP(&user, "user", "r", "",
+	cmd.Flags().StringP("user", "r", "",
 		"Username to use when connecting. Supported since Redis 6.")
-	cmd.Flags().StringVarP(&redisauth, "password", "a", "",
+	cmd.Flags().StringP("password", "a", "",
 		"Password to use when connecting")
-	cmd.Flags().BoolVar(&redistls, "tls", false,
+	cmd.Flags().Bool("tls", false,
 		"Enable TLS/SSL")
-	cmd.Flags().StringVarP(&servername, "sni", "s", "",
+	cmd.Flags().StringP("sni", "s", "",
 		"Server Name Indication for TLS certificate verification")
-	cmd.Flags().BoolVar(&insecure, "insecure", false,
+	cmd.Flags().Bool("insecure", false,
 		"Disable certificate validation")
-	cmd.Flags().StringVar(&cacertfile, "cacert", "",
+	cmd.Flags().String("cacert", "",
 		"CA certificate file for validation")
-	cmd.Flags().StringVar(&rediscertb64, "certb64", "",
+	cmd.Flags().String("certb64", "",
 		"Self-signed certificate string as base64 for validation")
-	cmd.Flags().StringVar(&sshURI, "ssh", "",
+	cmd.Flags().String("ssh", "",
 		"SSH tunnel connection URI. Format: [user[:pass]@]host[:port]")
-	cmd.Flags().StringVar(&sshIdentityFile, "ssh-identity-file", "",
+	cmd.Flags().String("ssh-identity-file", "",
 		"SSH identity file")
-	cmd.Flags().BoolVar(&forceraw, "raw", false,
+	cmd.Flags().Bool("raw", false,
 		"Produce raw output")
-	cmd.Flags().StringVar(&evalFile, "eval", "",
+	cmd.Flags().String("eval", "",
 		"Evaluate a Lua script file, follow with keys a , and args")
 
 	cmd.Version = version
@@ -110,30 +89,37 @@ func main() {
 }
 
 func runE(cmd *cobra.Command, args []string) error {
-	commandargs = args
+	uri, _ := cmd.Flags().GetString("uri")
+	host, _ := cmd.Flags().GetString("host")
+	port, _ := cmd.Flags().GetInt("port")
+	user, _ := cmd.Flags().GetString("user")
+	password, _ := cmd.Flags().GetString("password")
+	redisDB, _ := cmd.Flags().GetInt("db")
+	enableTLS, _ := cmd.Flags().GetBool("tls")
+	serverName, _ := cmd.Flags().GetString("sni")
+	insecure, _ := cmd.Flags().GetBool("insecure")
+	caCertFile, certB64 := loadCertFromEnv(cmd)
+	sshURI, _ := cmd.Flags().GetString("ssh")
+	sshIdentityFile, _ := cmd.Flags().GetString("ssh-identity-file")
+	forceRaw, _ := cmd.Flags().GetBool("raw")
+	evalFile, _ := cmd.Flags().GetString("eval")
 
-	loadCertFromEnv(cmd)
+	raw := forceRaw || !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd())
 
-	if forceraw {
-		raw = true
-	} else if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
-		raw = true
-	}
-
-	cert, err := rediscommands.LoadCert(cacertfile, rediscertb64)
+	cert, err := rediscommands.LoadCert(caCertFile, certB64)
 	if err != nil {
 		return fmt.Errorf("load cert: %w", err)
 	}
 
 	conn, err := rediscommands.Dial(rediscommands.DialConfig{
-		URI:             redisurlStr,
-		Host:            redishost,
-		Port:            redisport,
+		URI:             uri,
+		Host:            host,
+		Port:            port,
 		User:            user,
-		Password:        redisauth,
-		DB:              redisdb,
-		TLS:             redistls,
-		ServerName:      servername,
+		Password:        password,
+		DB:              redisDB,
+		TLS:             enableTLS,
+		ServerName:      serverName,
 		Insecure:        insecure,
 		SSHURI:          sshURI,
 		SSHIdentityFile: sshIdentityFile,
@@ -148,29 +134,34 @@ func runE(cmd *cobra.Command, args []string) error {
 	printer := &rediscommands.Printer{Raw: raw}
 
 	if evalFile != "" {
-		return fmt.Errorf("run eval script: %w", rediscommands.RunEvalScript(conn, evalFile, commandargs, printer))
+		return fmt.Errorf("run eval script: %w", rediscommands.RunEvalScript(conn, evalFile, args, printer))
 	}
 
-	if len(commandargs) > 0 {
-		return fmt.Errorf("run command: %w", rediscommands.RunCommand(conn, commandargs, printer))
+	if len(args) > 0 {
+		return fmt.Errorf("run command: %w", rediscommands.RunCommand(conn, args, printer))
 	}
 
 	return fmt.Errorf(
 		"run interactive: %w",
-		rediscommands.RunInteractive(conn, redisurlStr, redishost, redisport, printer),
+		rediscommands.RunInteractive(conn, uri, host, port, printer),
 	)
 }
 
-func loadCertFromEnv(cmd *cobra.Command) {
+func loadCertFromEnv(cmd *cobra.Command) (string, string) {
+	caCertFile, _ := cmd.Flags().GetString("cacert")
+	certB64, _ := cmd.Flags().GetString("certb64")
+
 	if !cmd.Flags().Changed("cacert") {
 		if val := os.Getenv("REDIS_CACERT"); val != "" {
-			cacertfile = val
+			caCertFile = val
 		}
 	}
 
 	if !cmd.Flags().Changed("certb64") {
 		if val := os.Getenv("REDIS_CERTB64"); val != "" {
-			rediscertb64 = val
+			certB64 = val
 		}
 	}
+
+	return caCertFile, certB64
 }
