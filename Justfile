@@ -11,7 +11,7 @@ lint-with-fix:
     golangci-lint run --verbose --allow-parallel-runners --fix ./...
 
 update-commands:
-    curl -o internal/redis/commands.json -LO https://github.com/antirez/redis-doc/raw/master/commands.json
+    curl -o internal/redis/command/commands.json -LO https://github.com/antirez/redis-doc/raw/master/commands.json
 
 install:
     go install github.com/aaronjheng/redis-cli/cmd/redis@$(git ls-remote https://github.com/aaronjheng/redis-cli.git refs/heads/master | cut -f1)

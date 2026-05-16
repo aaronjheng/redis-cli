@@ -1,4 +1,4 @@
-package redis
+package command
 
 import _ "embed"
 

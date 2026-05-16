@@ -11,12 +11,14 @@ import (
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/mattn/go-shellwords"
 	"github.com/peterh/liner"
+
+	"github.com/aaronjheng/redis-cli/internal/redis/command"
 )
 
 func RunInteractive(conn redigo.Conn, redisurlStr, redishost string, redisport int, printer *Printer) error {
-	var rawrediscommands Commands
+	var rawrediscommands command.Commands
 
-	err := json.Unmarshal(CommandsJSON, &rawrediscommands)
+	err := json.Unmarshal(command.CommandsJSON, &rawrediscommands)
 	if err != nil {
 		return fmt.Errorf("unmarshal commands: %w", err)
 	}
@@ -36,8 +38,8 @@ func RunInteractive(conn redigo.Conn, redisurlStr, redishost string, redisport i
 	return nil
 }
 
-func buildCommandIndex(rawrediscommands Commands) (map[string]Command, []string) {
-	rediscommandsMap := make(map[string]Command, len(rawrediscommands))
+func buildCommandIndex(rawrediscommands command.Commands) (map[string]command.Command, []string) {
+	rediscommandsMap := make(map[string]command.Command, len(rawrediscommands))
 	commandstrings := make([]string, len(rawrediscommands))
 
 	idx := 0
@@ -80,7 +82,7 @@ func CompleteCommand(line string, commandstrings []string) []string {
 func interactiveLoop(
 	conn redigo.Conn,
 	linerInstance *liner.State,
-	rediscommandsMap map[string]Command,
+	rediscommandsMap map[string]command.Command,
 	printer *Printer,
 	redisurlStr, redishost string,
 	redisport int,
@@ -144,7 +146,7 @@ func executeInteractiveCommand(conn redigo.Conn, parts []string, printer *Printe
 	printer.PrintIndenting(result, "", forceRaw)
 }
 
-func handleHelpCommand(parts []string, rediscommandsMap map[string]Command) bool {
+func handleHelpCommand(parts []string, rediscommandsMap map[string]command.Command) bool {
 	if len(parts) == 1 {
 		fmt.Fprintln(os.Stdout, "Enter help <command> to show information about a command")
 
@@ -154,7 +156,7 @@ func handleHelpCommand(parts []string, rediscommandsMap map[string]Command) bool
 	return printCommandHelp(strings.Join(parts[1:], " "), rediscommandsMap)
 }
 
-func printCommandHelp(name string, rediscommandsMap map[string]Command) bool {
+func printCommandHelp(name string, rediscommandsMap map[string]command.Command) bool {
 	commanddata, ok := rediscommandsMap[name]
 	if !ok {
 		return false
