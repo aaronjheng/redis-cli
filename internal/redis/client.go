@@ -53,6 +53,7 @@ func LoadCert(caCertFile, certB64 string) ([]byte, error) {
 	return nil, nil
 }
 
+//nolint:ireturn
 func Dial(cfg DialConfig) (redigo.Conn, error) {
 	connectionurl := buildConnectionURL(cfg)
 
@@ -169,6 +170,7 @@ func buildSSHDialOptions(sshURI, sshIdentityFile string) ([]redigo.DialOption, e
 	}, nil
 }
 
+//nolint:ireturn
 func dialRedis(connectionurl string, dialOptions []redigo.DialOption) (redigo.Conn, error) {
 	conn, err := redigo.DialURL(connectionurl, dialOptions...)
 	if err != nil && err.Error() == "ERR wrong number of arguments for 'auth' command" {

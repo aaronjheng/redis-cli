@@ -14,11 +14,13 @@ linters:
     - bidichk
     - bodyclose
     - canonicalheader
+    - clickhouselint
     - containedctx
     - contextcheck
     - copyloopvar
     - cyclop
     - decorder
+    - depguard
     - dogsled
     - dupl
     - dupword
@@ -50,7 +52,7 @@ linters:
     - godox
     - goheader
     - gomoddirectives
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - gosec
     - gosmopolitan
@@ -60,6 +62,7 @@ linters:
     - inamedparam
     - interfacebloat
     - intrange
+    - ireturn
     - iotamixing
     - lll
     - loggercheck
@@ -113,6 +116,18 @@ linters:
     - wsl_v5
     - zerologlint
   settings:
+    depguard:
+      rules:
+        Main:
+          allow:
+            - $gostd
+            - github.com/aaronjheng/redis-cli
+            - github.com/gomodule/redigo/redis
+            - github.com/mattn/go-isatty
+            - github.com/mattn/go-shellwords
+            - github.com/peterh/liner
+            - github.com/spf13/cobra
+            - golang.org/x/crypto/ssh
     goconst:
       min-occurrences: 5
     exhaustruct:
