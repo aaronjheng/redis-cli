@@ -8,7 +8,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.13
 	github.com/peterh/liner v1.2.2
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 )
 
 require (
@@ -17,5 +17,5 @@ require (
 	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
