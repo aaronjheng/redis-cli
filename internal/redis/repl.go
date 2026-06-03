@@ -8,14 +8,14 @@ import (
 	"sort"
 	"strings"
 
-	redigo "github.com/gomodule/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/mattn/go-shellwords"
 	"github.com/peterh/liner"
 
 	"github.com/aaronjheng/redis-cli/internal/redis/command"
 )
 
-func RunInteractive(conn redigo.Conn, redisurlStr, redishost string, redisport int, printer *Printer) error {
+func RunInteractive(conn redis.Conn, redisurlStr, redishost string, redisport int, printer *Printer) error {
 	var rawrediscommands command.Commands
 
 	err := json.Unmarshal(command.CommandsJSON, &rawrediscommands)
@@ -80,7 +80,7 @@ func CompleteCommand(line string, commandstrings []string) []string {
 }
 
 func interactiveLoop(
-	conn redigo.Conn,
+	conn redis.Conn,
 	linerInstance *liner.State,
 	rediscommandsMap map[string]command.Command,
 	printer *Printer,
@@ -128,7 +128,7 @@ func interactiveLoop(
 	}
 }
 
-func executeInteractiveCommand(conn redigo.Conn, parts []string, printer *Printer, forceRaw bool) {
+func executeInteractiveCommand(conn redis.Conn, parts []string, printer *Printer, forceRaw bool) {
 	args := make([]any, len(parts[1:]))
 	for idx, data := range parts[1:] {
 		args[idx] = data

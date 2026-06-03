@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	redigo "github.com/gomodule/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
-func RunCommand(conn redigo.Conn, args []string, printer *Printer) error {
+func RunCommand(conn redis.Conn, args []string, printer *Printer) error {
 	catchMonitorCmd(conn, args[0])
 
 	cmdArgs := make([]any, len(args[1:]))
@@ -27,7 +27,7 @@ func RunCommand(conn redigo.Conn, args []string, printer *Printer) error {
 	return nil
 }
 
-func RunEvalScript(conn redigo.Conn, scriptPath string, args []string, printer *Printer) error {
+func RunEvalScript(conn redis.Conn, scriptPath string, args []string, printer *Printer) error {
 	scriptsrc, err := os.ReadFile(scriptPath)
 	if err != nil {
 		return fmt.Errorf("read eval file: %w", err)
@@ -35,7 +35,7 @@ func RunEvalScript(conn redigo.Conn, scriptPath string, args []string, printer *
 
 	iargs, keycnt := ParseEvalArgs(args)
 
-	script := redigo.NewScript(keycnt, string(scriptsrc))
+	script := redis.NewScript(keycnt, string(scriptsrc))
 
 	result, err := script.Do(conn, iargs...)
 	if err != nil {
@@ -74,7 +74,7 @@ func ParseEvalArgs(commandargs []string) ([]any, int) {
 
 // catchMonitorCmd to go into a "stream" mode to stream back
 // every command processed by Redis server.
-func catchMonitorCmd(conn redigo.Conn, command string) {
+func catchMonitorCmd(conn redis.Conn, command string) {
 	if strings.ToLower(command) != "monitor" {
 		return
 	}
@@ -85,7 +85,7 @@ func catchMonitorCmd(conn redigo.Conn, command string) {
 	}
 
 	for {
-		line, err := redigo.String(conn.Receive())
+		line, err := redis.String(conn.Receive())
 		if err != nil {
 			return
 		}

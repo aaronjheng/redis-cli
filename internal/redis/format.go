@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	redigo "github.com/gomodule/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 type Printer struct {
@@ -65,7 +65,7 @@ func (p *Printer) isRawMode(forceRaw bool) bool {
 
 func (p *Printer) toValueString(value any, forceRaw bool) string {
 	switch val := value.(type) {
-	case redigo.Error:
+	case redis.Error:
 		if p.isRawMode(forceRaw) {
 			return val.Error()
 		}

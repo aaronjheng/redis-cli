@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strconv"
 
-	redigo "github.com/gomodule/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 
 	"github.com/aaronjheng/redis-cli/internal/ssh"
 )
@@ -54,7 +54,7 @@ func LoadCert(caCertFile, certB64 string) ([]byte, error) {
 }
 
 //nolint:ireturn
-func Dial(cfg DialConfig) (redigo.Conn, error) {
+func Dial(cfg DialConfig) (redis.Conn, error) {
 	connectionurl := buildConnectionURL(cfg)
 
 	dialOptions, err := buildDialOptions(cfg)
@@ -113,15 +113,15 @@ func newTLSConfig(cfg DialConfig) (*tls.Config, error) {
 	return config, nil
 }
 
-func buildDialOptions(cfg DialConfig) ([]redigo.DialOption, error) {
-	dialOptions := []redigo.DialOption{}
+func buildDialOptions(cfg DialConfig) ([]redis.DialOption, error) {
+	dialOptions := []redis.DialOption{}
 
 	config, err := newTLSConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	dialOptions = append(dialOptions, redigo.DialTLSConfig(config))
+	dialOptions = append(dialOptions, redis.DialTLSConfig(config))
 
 	if cfg.SSHURI != "" {
 		sshDialOpts, err := buildSSHDialOptions(cfg.SSHURI, cfg.SSHIdentityFile)
@@ -135,7 +135,7 @@ func buildDialOptions(cfg DialConfig) ([]redigo.DialOption, error) {
 	return dialOptions, nil
 }
 
-func buildSSHDialOptions(sshURI, sshIdentityFile string) ([]redigo.DialOption, error) {
+func buildSSHDialOptions(sshURI, sshIdentityFile string) ([]redis.DialOption, error) {
 	sshURL, err := url.Parse("ssh://" + sshURI)
 	if err != nil {
 		return nil, fmt.Errorf("parse SSH URI: %w", err)
@@ -163,20 +163,20 @@ func buildSSHDialOptions(sshURI, sshIdentityFile string) ([]redigo.DialOption, e
 		return nil, fmt.Errorf("create SSH dialer: %w", err)
 	}
 
-	return []redigo.DialOption{
-		redigo.DialContextFunc(dialFunc),
-		redigo.DialReadTimeout(0),
-		redigo.DialWriteTimeout(0),
+	return []redis.DialOption{
+		redis.DialContextFunc(dialFunc),
+		redis.DialReadTimeout(0),
+		redis.DialWriteTimeout(0),
 	}, nil
 }
 
 //nolint:ireturn
-func dialRedis(connectionurl string, dialOptions []redigo.DialOption) (redigo.Conn, error) {
-	conn, err := redigo.DialURL(connectionurl, dialOptions...)
+func dialRedis(connectionurl string, dialOptions []redis.DialOption) (redis.Conn, error) {
+	conn, err := redis.DialURL(connectionurl, dialOptions...)
 	if err != nil && err.Error() == "ERR wrong number of arguments for 'auth' command" {
 		re := regexp.MustCompile(`^(rediss?://)(.*)(:.*@.*)`)
 		connectionurl = re.ReplaceAllString(connectionurl, `$1$3`)
-		conn, err = redigo.DialURL(connectionurl, dialOptions...)
+		conn, err = redis.DialURL(connectionurl, dialOptions...)
 	}
 
 	if err != nil {
