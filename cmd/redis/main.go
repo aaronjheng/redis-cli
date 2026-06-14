@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	redigo "github.com/gomodule/redigo/redis"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
@@ -27,6 +28,15 @@ import (
 )
 
 const defaultRedisPort = 6379
+
+type commandConfig struct {
+	dialConfig internalredis.DialConfig
+	redisURI   string
+	redisHost  string
+	redisPort  int
+	rawOutput  bool
+	evalFile   string
+}
 
 func rootCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -49,6 +59,8 @@ func rootCmd() *cobra.Command {
 		"Port to connect to")
 	cmd.Flags().IntP("db", "n", 0,
 		"Redis database to access")
+	cmd.Flags().BoolP("cluster", "c", false,
+		"Force cluster mode")
 	cmd.Flags().StringP("user", "r", "",
 		"Username to use when connecting. Supported since Redis 6.")
 	cmd.Flags().StringP("password", "a", "",
@@ -89,12 +101,31 @@ func main() {
 }
 
 func runE(cmd *cobra.Command, args []string) error {
+	cfg, err := commandConfigFromFlags(cmd)
+	if err != nil {
+		return err
+	}
+
+	conn, err := internalredis.Dial(cfg.dialConfig)
+	if err != nil {
+		return fmt.Errorf("dial: %w", err)
+	}
+
+	defer conn.Close()
+
+	printer := &internalredis.Printer{Raw: cfg.rawOutput}
+
+	return runRedisAction(conn, cfg, args, printer)
+}
+
+func commandConfigFromFlags(cmd *cobra.Command) (commandConfig, error) {
 	uri, _ := cmd.Flags().GetString("uri")
 	host, _ := cmd.Flags().GetString("host")
 	port, _ := cmd.Flags().GetInt("port")
 	user, _ := cmd.Flags().GetString("user")
 	password, _ := cmd.Flags().GetString("password")
 	redisDB, _ := cmd.Flags().GetInt("db")
+	cluster, _ := cmd.Flags().GetBool("cluster")
 	enableTLS, _ := cmd.Flags().GetBool("tls")
 	serverName, _ := cmd.Flags().GetString("sni")
 	insecure, _ := cmd.Flags().GetBool("insecure")
@@ -108,43 +139,63 @@ func runE(cmd *cobra.Command, args []string) error {
 
 	cert, err := internalredis.LoadCert(caCertFile, certB64)
 	if err != nil {
-		return fmt.Errorf("load cert: %w", err)
+		return commandConfig{}, fmt.Errorf("load cert: %w", err)
 	}
 
-	conn, err := internalredis.Dial(internalredis.DialConfig{
-		URI:             uri,
-		Host:            host,
-		Port:            port,
-		User:            user,
-		Password:        password,
-		DB:              redisDB,
-		TLS:             enableTLS,
-		ServerName:      serverName,
-		Insecure:        insecure,
-		SSHURI:          sshURI,
-		SSHIdentityFile: sshIdentityFile,
-		Cert:            cert,
-	})
-	if err != nil {
-		return fmt.Errorf("dial: %w", err)
-	}
+	return commandConfig{
+		dialConfig: internalredis.DialConfig{
+			URI:             uri,
+			Host:            host,
+			Port:            port,
+			User:            user,
+			Password:        password,
+			DB:              redisDB,
+			Cluster:         cluster,
+			TLS:             enableTLS,
+			ServerName:      serverName,
+			Insecure:        insecure,
+			SSHURI:          sshURI,
+			SSHIdentityFile: sshIdentityFile,
+			Cert:            cert,
+		},
+		redisURI:  uri,
+		redisHost: host,
+		redisPort: port,
+		rawOutput: raw,
+		evalFile:  evalFile,
+	}, nil
+}
 
-	defer conn.Close()
+func runRedisAction(
+	conn redigo.Conn,
+	cfg commandConfig,
+	args []string,
+	printer *internalredis.Printer,
+) error {
+	if cfg.evalFile != "" {
+		err := internalredis.RunEvalScript(conn, cfg.evalFile, args, printer)
+		if err != nil {
+			return fmt.Errorf("run eval script: %w", err)
+		}
 
-	printer := &internalredis.Printer{Raw: raw}
-
-	if evalFile != "" {
-		return fmt.Errorf("run eval script: %w", internalredis.RunEvalScript(conn, evalFile, args, printer))
+		return nil
 	}
 
 	if len(args) > 0 {
-		return fmt.Errorf("run command: %w", internalredis.RunCommand(conn, args, printer))
+		err := internalredis.RunCommand(conn, args, printer)
+		if err != nil {
+			return fmt.Errorf("run command: %w", err)
+		}
+
+		return nil
 	}
 
-	return fmt.Errorf(
-		"run interactive: %w",
-		internalredis.RunInteractive(conn, uri, host, port, printer),
-	)
+	err := internalredis.RunInteractive(conn, cfg.redisURI, cfg.redisHost, cfg.redisPort, printer)
+	if err != nil {
+		return fmt.Errorf("run interactive: %w", err)
+	}
+
+	return nil
 }
 
 func loadCertFromEnv(cmd *cobra.Command) (string, string) {

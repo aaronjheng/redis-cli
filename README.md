@@ -24,6 +24,7 @@ Flags:
   -h, --host string                Host to connect to (default "127.0.0.1")
   -p, --port int                   Port to connect to (default 6379)
   -n, --db int                     Redis database to access
+  -c, --cluster                    Force cluster mode
   -r, --user string                Username to use when connecting. Supported since Redis 6.
   -a, --password string            Password to use when connecting
       --tls                        Enable TLS/SSL
@@ -68,6 +69,9 @@ redis --tls -h my.redis.host -p 6379 -a mypassword
 
 # Connect via SSH tunnel
 redis --ssh user@ssh-host -h my.redis.host -p 6379
+
+# Connect to a Redis Cluster and follow slot redirects
+redis -c -h 127.0.0.1 -p 7000
 
 # Execute a command
 redis INFO KEYSPACE

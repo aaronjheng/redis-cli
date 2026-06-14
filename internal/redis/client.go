@@ -25,6 +25,7 @@ type DialConfig struct {
 	User            string
 	Password        string
 	DB              int
+	Cluster         bool
 	TLS             bool
 	ServerName      string
 	Insecure        bool
@@ -55,6 +56,10 @@ func LoadCert(caCertFile, certB64 string) ([]byte, error) {
 
 //nolint:ireturn
 func Dial(cfg DialConfig) (redis.Conn, error) {
+	if cfg.Cluster {
+		return dialCluster(cfg)
+	}
+
 	connectionurl := buildConnectionURL(cfg)
 
 	dialOptions, err := buildDialOptions(cfg)
