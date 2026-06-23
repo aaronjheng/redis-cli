@@ -5,10 +5,10 @@ bump-deps:
     go mod tidy
 
 lint:
-    golangci-lint run --verbose --allow-parallel-runners
+    golangci-lint run --allow-parallel-runners ./...
 
 lint-with-fix:
-    golangci-lint run --verbose --allow-parallel-runners --fix ./...
+    golangci-lint run --allow-parallel-runners --fix ./...
 
 update-commands:
     curl -o internal/redis/command/commands.json -LO https://github.com/antirez/redis-doc/raw/master/commands.json
