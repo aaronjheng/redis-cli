@@ -12,6 +12,9 @@ func completionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish]",
 		Short: "Generate completion script",
+		Annotations: map[string]string{
+			"skipConfigLoad": "true",
+		},
 		Long: fmt.Sprintf(`To load completions:
 
 Bash:
