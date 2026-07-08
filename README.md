@@ -20,6 +20,8 @@ go install github.com/aaronjheng/redis-cli/cmd/redis@$(git ls-remote https://git
 redis [<flags>] [<commands>...]
 
 Flags:
+  -P, --profile string             Profile name to connect to (from config file)
+  -f, --config string              Config file path
   -u, --uri string                 URI to connect to
   -h, --host string                Host to connect to (default "127.0.0.1")
   -p, --port int                   Port to connect to (default 6379)
@@ -44,6 +46,48 @@ Flags:
 
 The URI follows the format of [the provisional IANA spec for Redis URLs](https://www.iana.org/assignments/uri-schemes/prov/redis), with the option to denote a TLS secured connection with the `rediss://` protocol.
 
+### Configuration Profiles
+
+Persist multiple connection configurations in a YAML file. The config file is searched in the following order:
+
+1. Path specified by `--config`/`-f`
+2. `./redis.yaml` (current directory)
+3. XDG config path (`~/.config/redis/redis.yaml` or `~/Library/Application Support/redis/redis.yaml`)
+
+```yaml
+default_profile: development
+
+profiles:
+  development:
+    uri: redis://127.0.0.1:6379
+    ssh:
+      host: bastion.example.com
+      user: deploy
+      identity_file: ~/.ssh/id_ed25519
+  staging:
+    host: 10.0.0.5
+    port: 6380
+    password: stagingpass
+    db: 1
+    tls: true
+    insecure: true
+  production:
+    uri: rediss://prod-redis.example.com:6379
+    user: default
+    password: secret
+    cluster: true
+    tls: true
+    cacert: /path/to/ca.crt
+```
+
+Use `--profile`/`-P` to select a profile. CLI flags override profile values.
+
+```bash
+redis PING                    # uses default_profile
+redis -P staging PING         # uses staging profile
+redis -P staging --host 10.0.0.6 PING  # flag overrides profile
+```
+
 ### Shell Completion
 
 `redis` supports shell completion for Bash, Zsh, and Fish.
@@ -58,8 +102,11 @@ To install permanently, run `redis completion <shell> --help` for instructions.
 ### Examples
 
 ```bash
-# Connect to local Redis
+# Connect to local Redis (uses default profile)
 redis
+
+# Connect with a named profile
+redis -P staging
 
 # Connect with URI
 redis -u redis://user:password@host:6379/0
