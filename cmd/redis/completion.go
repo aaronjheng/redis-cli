@@ -6,8 +6,6 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-
-	"github.com/aaronjheng/redis-cli/internal/config"
 )
 
 func completionCmd() *cobra.Command {
@@ -63,19 +61,9 @@ fish:
 	return cmd
 }
 
-func profileCompletionFunc(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+func profileCompletionFunc(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	if cfg == nil {
-		cfgFilepath, err := cmd.Flags().GetString("config")
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		loaded, err := config.LoadConfig(cfgFilepath)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		cfg = loaded
+		return nil, cobra.ShellCompDirectiveError
 	}
 
 	names := make([]string, 0, len(cfg.Profiles))
