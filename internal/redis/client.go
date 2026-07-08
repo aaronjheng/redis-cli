@@ -19,19 +19,18 @@ import (
 var errCertLoadFailed = errors.New("couldn't load cert data")
 
 type DialConfig struct {
-	URI             string
-	Host            string
-	Port            int
-	User            string
-	Password        string
-	DB              int
-	Cluster         bool
-	TLS             bool
-	ServerName      string
-	Insecure        bool
-	SSHURI          string
-	SSHIdentityFile string
-	Cert            []byte
+	URI        string
+	Host       string
+	Port       int
+	User       string
+	Password   string
+	DB         int
+	Cluster    bool
+	TLS        bool
+	ServerName string
+	Insecure   bool
+	SSH        *ssh.Config
+	Cert       []byte
 }
 
 func LoadCert(caCertFile, certB64 string) ([]byte, error) {
@@ -128,51 +127,20 @@ func buildDialOptions(cfg DialConfig) ([]redis.DialOption, error) {
 
 	dialOptions = append(dialOptions, redis.DialTLSConfig(config))
 
-	if cfg.SSHURI != "" {
-		sshDialOpts, err := buildSSHDialOptions(cfg.SSHURI, cfg.SSHIdentityFile)
+	if cfg.SSH != nil {
+		dialFunc, err := ssh.NewDialerFunc(cfg.SSH)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create SSH dialer: %w", err)
 		}
 
-		dialOptions = append(dialOptions, sshDialOpts...)
+		dialOptions = append(dialOptions,
+			redis.DialContextFunc(dialFunc),
+			redis.DialReadTimeout(0),
+			redis.DialWriteTimeout(0),
+		)
 	}
 
 	return dialOptions, nil
-}
-
-func buildSSHDialOptions(sshURI, sshIdentityFile string) ([]redis.DialOption, error) {
-	sshURL, err := url.Parse("ssh://" + sshURI)
-	if err != nil {
-		return nil, fmt.Errorf("parse SSH URI: %w", err)
-	}
-
-	port := sshURL.Port()
-	if port == "" {
-		port = "22"
-	}
-
-	portNum, err := strconv.ParseInt(port, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("parse SSH port: %w", err)
-	}
-
-	cfg := &ssh.Config{
-		Host:         sshURL.Hostname(),
-		Port:         int32(portNum),
-		User:         sshURL.User.Username(),
-		IdentityFile: sshIdentityFile,
-	}
-
-	dialFunc, err := ssh.NewDialerFunc(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("create SSH dialer: %w", err)
-	}
-
-	return []redis.DialOption{
-		redis.DialContextFunc(dialFunc),
-		redis.DialReadTimeout(0),
-		redis.DialWriteTimeout(0),
-	}, nil
 }
 
 //nolint:ireturn

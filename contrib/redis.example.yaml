@@ -1,0 +1,28 @@
+default_profile: local
+
+profiles:
+  local:
+    host: 127.0.0.1
+    port: 6379
+    db: 0
+  production:
+    uri: rediss://prod-redis.example.com:6379
+    user: default
+    password: secret
+    cluster: true
+    tls: true
+    sni: redis.example.com
+    insecure: false
+    cacert: /path/to/ca.crt
+    ssh:
+      host: bastion.example.com
+      port: 22
+      user: deploy
+      identity_file: ~/.ssh/id_ed25519
+  staging:
+    host: 10.0.0.5
+    port: 6380
+    password: stagingpass
+    db: 1
+    tls: true
+    insecure: true

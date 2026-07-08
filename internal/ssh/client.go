@@ -11,11 +11,13 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const defaultSSHPort = 22
+
 type Config struct {
-	Host         string
-	Port         int32
-	User         string
-	IdentityFile string
+	Host         string `mapstructure:"host"`
+	Port         int32  `mapstructure:"port"`
+	User         string `mapstructure:"user"`
+	IdentityFile string `mapstructure:"identity_file"`
 }
 
 type Client struct {
@@ -23,6 +25,10 @@ type Client struct {
 }
 
 func NewClient(cfg *Config) (*Client, error) {
+	if cfg.Port == 0 {
+		cfg.Port = defaultSSHPort
+	}
+
 	identityFiles := []string{
 		"~/.ssh/id_ed25519",
 		"~/.ssh/id_ecdsa",

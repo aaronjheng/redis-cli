@@ -111,11 +111,13 @@ linters:
           allow:
             - $gostd
             - github.com/aaronjheng/redis-cli
+            - github.com/adrg/xdg
             - github.com/gomodule/redigo/redis
             - github.com/mattn/go-isatty
             - github.com/mattn/go-shellwords
             - github.com/peterh/liner
             - github.com/spf13/cobra
+            - github.com/spf13/viper
             - golang.org/x/crypto/ssh
     goconst:
       min-occurrences: 5

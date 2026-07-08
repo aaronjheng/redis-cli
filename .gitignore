@@ -1,6 +1,7 @@
 dist/
 /redis
 /redis-cli
+/redis.yaml
 commands.go.old
 .DS_Store
 .vscode/
