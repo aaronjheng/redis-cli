@@ -46,41 +46,55 @@ Flags:
 
 The URI follows the format of [the provisional IANA spec for Redis URLs](https://www.iana.org/assignments/uri-schemes/prov/redis), with the option to denote a TLS secured connection with the `rediss://` protocol.
 
-### Configuration Profiles
+### Configuration
 
-Persist multiple connection configurations in a YAML file. The config file is searched in the following order:
+See [redis.example.yaml](contrib/redis.example.yaml) for reference.
 
-1. Path specified by `--config`/`-f`
+#### Config File Search Order
+
+1. Path specified by `--config` / `-f` flag
 2. `./redis.yaml` (current directory)
-3. XDG config path (`~/.config/redis/redis.yaml` or `~/Library/Application Support/redis/redis.yaml`)
+3. `$XDG_CONFIG_HOME/redis/redis.yaml`
+   - Linux: `~/.config/redis/redis.yaml`
+   - macOS: `~/Library/Application Support/redis/redis.yaml`
 
-```yaml
-default_profile: development
+If no config file is found, a default configuration is used with a `default` profile pointing to `127.0.0.1:6379`.
 
-profiles:
-  development:
-    uri: redis://127.0.0.1:6379
-    ssh:
-      host: bastion.example.com
-      user: deploy
-      identity_file: ~/.ssh/id_ed25519
-  staging:
-    host: 10.0.0.5
-    port: 6380
-    password: stagingpass
-    db: 1
-    tls: true
-    insecure: true
-  production:
-    uri: rediss://prod-redis.example.com:6379
-    user: default
-    password: secret
-    cluster: true
-    tls: true
-    cacert: /path/to/ca.crt
-```
+#### Config Fields
 
-Use `--profile`/`-P` to select a profile. CLI flags override profile values.
+| Field | Description |
+|-------|-------------|
+| `default_profile` | Default profile name used when `--profile` is not specified |
+| `profiles` | Map of profile name to profile config |
+
+Each profile supports the following fields:
+
+| Field | Description |
+|-------|-------------|
+| `uri` | URI to connect to (overrides host/port/user/password/db/tls) |
+| `host` | Host to connect to (default `127.0.0.1`) |
+| `port` | Port to connect to (default `6379`) |
+| `db` | Redis database to access |
+| `cluster` | Enable cluster mode |
+| `user` | Username (Redis 6+) |
+| `password` | Password |
+| `tls` | Enable TLS/SSL |
+| `sni` | Server Name Indication for TLS certificate verification |
+| `insecure` | Disable certificate validation |
+| `cacert` | CA certificate file for validation |
+| `certb64` | Self-signed certificate string as base64 for validation |
+| `ssh` | SSH tunnel configuration |
+
+#### `ssh`
+
+| Field | Description |
+|-------|-------------|
+| `host` | SSH bastion host address |
+| `port` | SSH port (default `22`) |
+| `user` | SSH user name |
+| `identity_file` | Path to SSH private key. If not specified, the following default keys are tried in order: `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa`, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` |
+
+Use `--profile` / `-P` to select a profile. CLI flags override profile values.
 
 ```bash
 redis PING                    # uses default_profile
