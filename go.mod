@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/gomodule/redigo v1.9.3
-	github.com/mattn/go-isatty v0.0.22
+	github.com/mattn/go-isatty v0.0.23
 	github.com/mattn/go-shellwords v1.0.14
 	github.com/peterh/liner v1.2.2
 	github.com/spf13/cobra v1.10.2
