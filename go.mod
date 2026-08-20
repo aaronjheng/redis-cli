@@ -1,6 +1,6 @@
 module github.com/aaronjheng/redis-cli
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/adrg/xdg v0.5.3
