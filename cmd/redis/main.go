@@ -201,7 +201,7 @@ func commandConfigFromFlags(cmd *cobra.Command) (commandConfig, error) {
 
 func resolveProfileConfig() (*config.ProfileConfig, error) {
 	if cfg == nil {
-		return &config.ProfileConfig{}, nil //nolint:exhaustruct // zero values trigger flag defaults
+		return &config.ProfileConfig{}, nil
 	}
 
 	profCfg, err := cfg.Profile(profile)
