@@ -112,7 +112,7 @@ func registerRootFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("raw", false, "Produce raw output")
 	cmd.Flags().String("eval", "", "Evaluate a Lua script file, follow with keys a , and args")
 
-	cmd.Version = version
+	cmd.Version = fullVersion()
 	cmd.InitDefaultVersionFlag()
 	cmd.Flags().Lookup("version").Usage = "Print version"
 
