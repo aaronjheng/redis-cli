@@ -36,6 +36,7 @@ Flags:
       --certb64 string             Self-signed certificate string as base64 for validation
       --ssh string                 SSH tunnel connection URI. Format: [user[:pass]@]host[:port]
       --ssh-identity-file string   SSH identity file
+      --ssh-mode string            SSH tunnel mode: builtin or external
       --raw                        Produce raw output
       --eval string                Evaluate a Lua script file, follow with keys a , and args
   -v, --version                    Print version
@@ -89,10 +90,22 @@ Each profile supports the following fields:
 
 | Field | Description |
 |-------|-------------|
-| `host` | SSH bastion host address |
-| `port` | SSH port (default `22`) |
-| `user` | SSH user name |
-| `identity_file` | Path to SSH private key. If not specified, the following default keys are tried in order: `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa`, `~/.ssh/id_dsa`, `~/.ssh/id_rsa` |
+| `host` | SSH bastion host address. In `external` mode this may also be a `Host` alias from `~/.ssh/config` |
+| `port` | SSH port (default `22`). In `external` mode, leave unset to inherit from `~/.ssh/config` |
+| `user` | SSH user name. In `external` mode, leave unset to inherit from `~/.ssh/config` |
+| `identity_file` | Path to SSH private key. If not specified, the following default keys are tried in order: `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa`, `~/.ssh/id_dsa`, `~/.ssh/id_rsa`. In `external` mode, leave unset to inherit from `~/.ssh/config` |
+| `mode` | Tunnel implementation: `builtin` (default) uses the in-process SSH client; `external` launches the system `ssh` command as a child process (tunnel only, via `ssh -D`) |
+| `options` | Extra `ssh` command-line arguments, passed through as-is. `external` mode only |
+
+In `external` mode, the `ssh` binary from `PATH` is used, so `~/.ssh/config`, `ssh-agent`, and interactive password prompts behave as with a normal `ssh` invocation. The tunnel is started and stopped together with the command.
+
+With an alias in `~/.ssh/config` (e.g. `User` or `ProxyCommand` directives), only `host` and `mode` are needed:
+
+```yaml
+ssh:
+  host: bastion.example.com
+  mode: external
+```
 
 Use `--profile` / `-P` to select a profile. CLI flags override profile values.
 
@@ -130,6 +143,9 @@ redis --tls -h my.redis.host -p 6379 -a mypassword
 
 # Connect via SSH tunnel
 redis --ssh user@ssh-host -h my.redis.host -p 6379
+
+# Connect via SSH tunnel using the system ssh command
+redis --ssh ssh-host --ssh-mode external -h my.redis.host -p 6379
 
 # Connect to a Redis Cluster and follow slot redirects
 redis -c -h 127.0.0.1 -p 7000

@@ -108,6 +108,7 @@ func registerRootFlags(cmd *cobra.Command) {
 	cmd.Flags().String("certb64", "", "Self-signed certificate string as base64 for validation")
 	cmd.Flags().String("ssh", "", "SSH tunnel connection URI. Format: [user[:pass]@]host[:port]")
 	cmd.Flags().String("ssh-identity-file", "", "SSH identity file")
+	cmd.Flags().String("ssh-mode", "", "SSH tunnel mode: builtin or external")
 	cmd.Flags().Bool("raw", false, "Produce raw output")
 	cmd.Flags().String("eval", "", "Evaluate a Lua script file, follow with keys a , and args")
 
@@ -131,7 +132,7 @@ func runE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	conn, err := internalredis.Dial(cmdCfg.dialConfig)
+	conn, err := internalredis.Dial(cmd.Context(), cmdCfg.dialConfig)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
@@ -216,8 +217,9 @@ func resolveSSHConfig(cmd *cobra.Command, profCfg *config.ProfileConfig) (*ssh.C
 	if cmd.Flags().Changed("ssh") {
 		sshURI, _ := cmd.Flags().GetString("ssh")
 		sshIdentityFile, _ := cmd.Flags().GetString("ssh-identity-file")
+		sshMode, _ := cmd.Flags().GetString("ssh-mode")
 
-		return parseSSHURI(sshURI, sshIdentityFile)
+		return parseSSHURI(sshURI, sshIdentityFile, ssh.Mode(sshMode))
 	}
 
 	if profCfg.SSH == nil {
@@ -230,10 +232,15 @@ func resolveSSHConfig(cmd *cobra.Command, profCfg *config.ProfileConfig) (*ssh.C
 		sshCfg.IdentityFile, _ = cmd.Flags().GetString("ssh-identity-file")
 	}
 
+	if cmd.Flags().Changed("ssh-mode") {
+		sshMode, _ := cmd.Flags().GetString("ssh-mode")
+		sshCfg.Mode = ssh.Mode(sshMode)
+	}
+
 	return &sshCfg, nil
 }
 
-func parseSSHURI(sshURI, sshIdentityFile string) (*ssh.Config, error) {
+func parseSSHURI(sshURI, sshIdentityFile string, sshMode ssh.Mode) (*ssh.Config, error) {
 	sshURL, err := url.Parse("ssh://" + sshURI)
 	if err != nil {
 		return nil, fmt.Errorf("parse SSH URI: %w", err)
@@ -254,6 +261,7 @@ func parseSSHURI(sshURI, sshIdentityFile string) (*ssh.Config, error) {
 		Port:         int32(portNum),
 		User:         sshURL.User.Username(),
 		IdentityFile: sshIdentityFile,
+		Mode:         sshMode,
 	}, nil
 }
 

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/gomodule/redigo/redis"
+
+	"github.com/aaronjheng/redis-cli/internal/ssh"
 )
 
 const (
@@ -52,7 +54,7 @@ func (e redisCommandError) Unwrap() error {
 	return e.err
 }
 
-func dialCluster(cfg DialConfig) (*clusterConn, error) {
+func dialCluster(cfg DialConfig, dialer ssh.DialerFunc) (*clusterConn, error) {
 	err := validateClusterDB(cfg)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func dialCluster(cfg DialConfig) (*clusterConn, error) {
 
 	parsedURL.Host = seedAddr
 
-	dialOptions, err := buildDialOptions(cfg)
+	dialOptions, err := buildDialOptions(cfg, dialer)
 	if err != nil {
 		return nil, err
 	}

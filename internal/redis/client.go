@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -54,24 +55,85 @@ func LoadCert(caCertFile, certB64 string) ([]byte, error) {
 }
 
 //nolint:ireturn
-func Dial(cfg DialConfig) (redis.Conn, error) {
+func Dial(ctx context.Context, cfg DialConfig) (redis.Conn, error) {
+	// The tunnel is created once and shared by every connection, including
+	// the lazily dialed cluster nodes, then released when the returned
+	// connection is closed.
+	var tunnel *ssh.Tunnel
+
+	var dialer ssh.DialerFunc
+
+	if cfg.SSH != nil {
+		created, err := ssh.NewTunnel(ctx, cfg.SSH)
+		if err != nil {
+			return nil, fmt.Errorf("create SSH tunnel: %w", err)
+		}
+
+		tunnel = created
+		dialer = created.DialerFunc
+	}
+
 	if cfg.Cluster {
-		return dialCluster(cfg)
+		clusterConn, err := dialCluster(cfg, dialer)
+		if err != nil {
+			_ = closeTunnel(tunnel)
+
+			return nil, err
+		}
+
+		return wrapTunnel(clusterConn, tunnel), nil
 	}
 
 	connectionurl := buildConnectionURL(cfg)
 
-	dialOptions, err := buildDialOptions(cfg)
+	dialOptions, err := buildDialOptions(cfg, dialer)
 	if err != nil {
+		_ = closeTunnel(tunnel)
+
 		return nil, err
 	}
 
 	conn, err := dialRedis(connectionurl, dialOptions)
 	if err != nil {
+		_ = closeTunnel(tunnel)
+
 		return nil, fmt.Errorf("dial: %w", err)
 	}
 
-	return conn, nil
+	return wrapTunnel(conn, tunnel), nil
+}
+
+// tunnelConn releases the SSH tunnel together with the Redis connection.
+type tunnelConn struct {
+	redis.Conn
+
+	tunnel *ssh.Tunnel
+}
+
+//nolint:ireturn // Wraps either a standalone or a cluster connection with tunnel cleanup.
+func wrapTunnel(conn redis.Conn, tunnel *ssh.Tunnel) redis.Conn {
+	if tunnel == nil {
+		return conn
+	}
+
+	return &tunnelConn{Conn: conn, tunnel: tunnel}
+}
+
+func (c *tunnelConn) Close() error {
+	return errors.Join(c.Conn.Close(), closeTunnel(c.tunnel))
+}
+
+func closeTunnel(tunnel *ssh.Tunnel) error {
+	if tunnel == nil {
+		return nil
+	}
+
+	err := tunnel.Close()
+	if err != nil {
+		return fmt.Errorf("tunnel.Close error: %w", err)
+	}
+
+	return nil
 }
 
 func buildConnectionURL(cfg DialConfig) string {
@@ -117,7 +179,7 @@ func newTLSConfig(cfg DialConfig) (*tls.Config, error) {
 	return config, nil
 }
 
-func buildDialOptions(cfg DialConfig) ([]redis.DialOption, error) {
+func buildDialOptions(cfg DialConfig, dialer ssh.DialerFunc) ([]redis.DialOption, error) {
 	dialOptions := []redis.DialOption{}
 
 	config, err := newTLSConfig(cfg)
@@ -127,14 +189,9 @@ func buildDialOptions(cfg DialConfig) ([]redis.DialOption, error) {
 
 	dialOptions = append(dialOptions, redis.DialTLSConfig(config))
 
-	if cfg.SSH != nil {
-		dialFunc, err := ssh.NewDialerFunc(cfg.SSH)
-		if err != nil {
-			return nil, fmt.Errorf("create SSH dialer: %w", err)
-		}
-
+	if dialer != nil {
 		dialOptions = append(dialOptions,
-			redis.DialContextFunc(dialFunc),
+			redis.DialContextFunc(dialer),
 			redis.DialReadTimeout(0),
 			redis.DialWriteTimeout(0),
 		)

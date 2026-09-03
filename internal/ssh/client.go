@@ -13,11 +13,23 @@ import (
 
 const defaultSSHPort = 22
 
+// Mode selects the SSH tunnel implementation.
+type Mode string
+
+const (
+	// ModeBuiltin uses the in-process SSH client.
+	ModeBuiltin Mode = "builtin"
+	// ModeExternal launches the system ssh(1) command as a child process.
+	ModeExternal Mode = "external"
+)
+
 type Config struct {
-	Host         string `mapstructure:"host"`
-	Port         int32  `mapstructure:"port"`
-	User         string `mapstructure:"user"`
-	IdentityFile string `mapstructure:"identity_file"`
+	Host         string   `mapstructure:"host"`
+	Port         int32    `mapstructure:"port"`
+	User         string   `mapstructure:"user"`
+	IdentityFile string   `mapstructure:"identity_file"`
+	Mode         Mode     `mapstructure:"mode"`
+	Options      []string `mapstructure:"options"`
 }
 
 type Client struct {
@@ -64,6 +76,19 @@ func NewClient(cfg *Config) (*Client, error) {
 	}
 
 	return client, nil
+}
+
+func expandPath(path string) (string, error) {
+	if !strings.HasPrefix(path, "~/") {
+		return path, nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("os.UserHomeDir error: %w", err)
+	}
+
+	return filepath.Join(homeDir, path[2:]), nil
 }
 
 func sshSignersFromIdentityFiles(identityFiles []string) ([]ssh.Signer, error) {
