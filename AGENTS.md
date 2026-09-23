@@ -35,16 +35,6 @@ just install
 - All lint errors must be fixed before committing.
 - Do not enable deprecated linters.
 
-## Git Workflow
+## Commits & Pull Requests
 
-### Critical Rules
-
-- **NEVER commit or push changes unless the user EXPLICITLY asks you to.** Even if the user says "commit", do NOT also push unless they say "push". Do NOT assume the user wants to commit after making changes. Always wait for explicit instruction.
-
-- Never run `git commit`, `git push`, or other git mutations unless explicitly instructed
-- If explicitly instructed to commit or push, execute directly without extra confirmation
-- Commit message rules:
-  - One sentence only
-  - No Conventional Commit prefixes
-  - Capitalize the first letter
-  - Example: "Replace kingpin with cobra"
+- Commit message: no Conventional Commit prefixes, capitalize the first letter (e.g. "Replace kingpin with cobra").
