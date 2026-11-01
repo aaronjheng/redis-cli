@@ -5,6 +5,7 @@ linters:
     - errcheck
     - govet
     - ineffassign
+    - modernize
     - staticcheck
     - unused
 
@@ -67,7 +68,6 @@ linters:
     - mirror
     - misspell
     - mnd
-    - modernize
     - musttag
     - nakedret
     - nestif
