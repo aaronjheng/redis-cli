@@ -150,7 +150,14 @@ func buildConnectionURL(cfg DialConfig) string {
 	}
 
 	if cfg.Password != "" {
-		connectionurl += url.QueryEscape(cfg.User) + ":" + url.QueryEscape(cfg.Password) + "@"
+		// Per the Redis connection URL spec, the username defaults to the
+		// "default" user when only a password is provided.
+		user := cfg.User
+		if user == "" {
+			user = "default"
+		}
+
+		connectionurl += url.QueryEscape(user) + ":" + url.QueryEscape(cfg.Password) + "@"
 	}
 
 	connectionurl += cfg.Host + ":" + strconv.Itoa(cfg.Port) + "/" + strconv.Itoa(cfg.DB)
