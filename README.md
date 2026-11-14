@@ -14,6 +14,15 @@ If you need the newest `master` commit immediately (without relying on branch-re
 go install github.com/aaronjheng/redis-cli/cmd/redis@$(git ls-remote https://github.com/aaronjheng/redis-cli.git refs/heads/master | cut -f1)
 ```
 
+## Agent Skills
+
+An [Agent Skill](https://agentskills.io) for coding agents is available in
+[`skills/redis-cli`](skills/redis-cli/SKILL.md):
+
+```shell
+skills add aaronjheng/redis-cli --skill redis-cli
+```
+
 ## Usage
 
 ```text
