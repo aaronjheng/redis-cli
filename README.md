@@ -20,7 +20,7 @@ An [Agent Skill](https://agentskills.io) for coding agents is available in
 [`skills/redis-cli`](skills/redis-cli/SKILL.md):
 
 ```shell
-skills add aaronjheng/redis-cli --skill redis-cli
+skills add aaronjheng/redis-cli --skill redis-cli --global
 ```
 
 ## Usage
