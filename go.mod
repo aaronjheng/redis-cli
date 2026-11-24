@@ -6,12 +6,12 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/gomodule/redigo v1.9.3
 	github.com/mattn/go-isatty v0.0.24
-	github.com/mattn/go-shellwords v1.0.16
+	github.com/mattn/go-shellwords v1.0.17
 	github.com/peterh/liner v1.2.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	golang.org/x/crypto v0.59.0
-	golang.org/x/net v0.62.0
+	golang.org/x/net v0.63.0
 )
 
 require (
